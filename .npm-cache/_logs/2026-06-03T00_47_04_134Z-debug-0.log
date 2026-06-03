@@ -1,0 +1,31 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa\.npmrc
+5 silly config load:file:C:\Users\Usuario\.npmrc
+6 silly config load:file:C:\Users\Usuario\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install @next/swc-win32-x64-msvc@16.2.6
+8 verbose argv "install" "@next/swc-win32-x64-msvc@16.2.6" "--save-optional" "--cache" ".npm-cache" "--no-audit"
+9 verbose logfile logs-max:10 dir:C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa\.npm-cache\_logs\2026-06-03T00_47_04_134Z-
+10 verbose logfile C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa\.npm-cache\_logs\2026-06-03T00_47_04_134Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly idealTree buildDeps
+14 silly fetch manifest @next/swc-win32-x64-msvc@16.2.6
+15 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-x64-msvc cache-miss
+16 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules/@next
+17 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-win32-x64-msvc 1753ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-x64-msvc set size:undefined disposed:false
+19 silly placeDep ROOT @next/swc-win32-x64-msvc@16.2.6 REPLACE for: sistema-cooperativa@0.1.0 want: 16.2.6
+20 silly reify moves {}
+21 http cache @next/swc-win32-x64-msvc@https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-16.2.6.tgz 0ms (cache hit)
+22 silly tarball no local data for @next/swc-win32-x64-msvc@https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-16.2.6.tgz. Extracting by manifest.
+23 http fetch GET 200 https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-16.2.6.tgz 39747ms (cache miss)
+24 silly ADD node_modules/@next/swc-win32-x64-msvc
+25 verbose cwd C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa
+26 verbose os Windows_NT 10.0.26200
+27 verbose node v24.16.0
+28 verbose npm  v11.13.0
+29 verbose exit 0
+30 info ok

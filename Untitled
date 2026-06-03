@@ -1,0 +1,8 @@
+# 1. Activamos Git en esta carpeta
+git init
+
+# 2. Conectamos con tu repositorio en GitHub
+git remote add origin https://github.com/marcelomitasilva-jpg/sistema-cooperativa.git
+
+# 3. Verificamos si la conexión se hizo bien
+git remote -v

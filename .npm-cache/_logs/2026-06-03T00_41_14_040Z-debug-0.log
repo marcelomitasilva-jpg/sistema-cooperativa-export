@@ -1,0 +1,294 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa\.npmrc
+5 silly config load:file:C:\Users\Usuario\.npmrc
+6 silly config load:file:C:\Users\Usuario\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--cache" ".npm-cache" "--no-audit"
+9 verbose logfile logs-max:10 dir:C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa\.npm-cache\_logs\2026-06-03T00_41_14_040Z-
+10 verbose logfile C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa\.npm-cache\_logs\2026-06-03T00_41_14_040Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly idealTree buildDeps
+14 silly reify mark retired [
+14 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\acorn',
+14 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\acorn',
+14 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\acorn.cmd',
+14 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\acorn.ps1'
+14 silly reify ]
+15 silly reify mark retired [
+15 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\baseline-browser-mapping',
+15 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\baseline-browser-mapping',
+15 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\baseline-browser-mapping.cmd',
+15 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\baseline-browser-mapping.ps1'
+15 silly reify ]
+16 silly reify mark retired [
+16 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\browserslist',
+16 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\browserslist',
+16 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\browserslist.cmd',
+16 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\browserslist.ps1'
+16 silly reify ]
+17 silly reify mark retired [
+17 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\eslint',
+17 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\eslint',
+17 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\eslint.cmd',
+17 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\eslint.ps1'
+17 silly reify ]
+18 silly reify mark retired [
+18 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\semver',
+18 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\semver',
+18 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\semver.cmd',
+18 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\semver.ps1'
+18 silly reify ]
+19 silly reify mark retired [
+19 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\jiti',
+19 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jiti',
+19 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jiti.cmd',
+19 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jiti.ps1'
+19 silly reify ]
+20 silly reify mark retired [
+20 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\js-yaml',
+20 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\js-yaml',
+20 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\js-yaml.cmd',
+20 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\js-yaml.ps1'
+20 silly reify ]
+21 silly reify mark retired [
+21 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\jsesc',
+21 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jsesc',
+21 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jsesc.cmd',
+21 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jsesc.ps1'
+21 silly reify ]
+22 silly reify mark retired [
+22 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\json5',
+22 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\json5',
+22 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\json5.cmd',
+22 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\json5.ps1'
+22 silly reify ]
+23 silly reify mark retired [
+23 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\loose-envify',
+23 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\loose-envify',
+23 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\loose-envify.cmd',
+23 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\loose-envify.ps1'
+23 silly reify ]
+24 silly reify mark retired [
+24 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\next',
+24 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\next',
+24 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\next.cmd',
+24 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\next.ps1'
+24 silly reify ]
+25 silly reify mark retired [
+25 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\napi-postinstall',
+25 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\napi-postinstall',
+25 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\napi-postinstall.cmd',
+25 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\napi-postinstall.ps1'
+25 silly reify ]
+26 silly reify mark retired [
+26 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\nanoid',
+26 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\nanoid',
+26 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\nanoid.cmd',
+26 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\nanoid.ps1'
+26 silly reify ]
+27 silly reify mark retired [
+27 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\resolve',
+27 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\resolve',
+27 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\resolve.cmd',
+27 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\resolve.ps1'
+27 silly reify ]
+28 silly reify mark retired [
+28 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\semver',
+28 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\semver',
+28 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\semver.cmd',
+28 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\semver.ps1'
+28 silly reify ]
+29 silly reify mark retired [
+29 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\json5',
+29 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\json5',
+29 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\json5.cmd',
+29 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\json5.ps1'
+29 silly reify ]
+30 silly reify mark retired [
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\typescript',
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsc',
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsc.cmd',
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsc.ps1',
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsserver',
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsserver.cmd',
+30 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsserver.ps1'
+30 silly reify ]
+31 silly reify mark retired [
+31 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\update-browserslist-db',
+31 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\update-browserslist-db',
+31 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\update-browserslist-db.cmd',
+31 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\update-browserslist-db.ps1'
+31 silly reify ]
+32 silly reify mark retired [
+32 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\which',
+32 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\node-which',
+32 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\node-which.cmd',
+32 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\node-which.ps1'
+32 silly reify ]
+33 silly reify mark retired [
+33 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@babel\\parser',
+33 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\parser',
+33 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\parser.cmd',
+33 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\parser.ps1'
+33 silly reify ]
+34 silly reify mark retired [
+34 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\semver',
+34 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\semver',
+34 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\semver.cmd',
+34 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\semver.ps1'
+34 silly reify ]
+35 silly reify mark retired [
+35 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\semver',
+35 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\semver',
+35 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\semver.cmd',
+35 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\semver.ps1'
+35 silly reify ]
+36 silly reify moves {
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\acorn': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.acorn-rO5fBHoW',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\acorn': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.acorn-UC2VBiuw',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\acorn.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.acorn.cmd-4zkg64SW',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\acorn.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.acorn.ps1-ZJpfAa4r',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\baseline-browser-mapping': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.baseline-browser-mapping-AJ16w9lv',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\baseline-browser-mapping': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.baseline-browser-mapping-B294FJAh',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\baseline-browser-mapping.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.baseline-browser-mapping.cmd-RF0OR2xB',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\baseline-browser-mapping.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.baseline-browser-mapping.ps1-E4Xu0cOS',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\browserslist': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.browserslist-ahwDh7bS',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\browserslist': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.browserslist-U8pe9Wvs',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\browserslist.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.browserslist.cmd-QZrDd293',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\browserslist.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.browserslist.ps1-DspiBPZe',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\eslint': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.eslint-EH0S59J8',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\eslint': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.eslint-Qrq6aBlY',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\eslint.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.eslint.cmd-Y6aDCs3X',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\eslint.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.eslint.ps1-daWGf3gP',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.semver-yKgEzJvA',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\.semver-H0bOTO3j',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\semver.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\.semver.cmd-2aNjdw6Q',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\semver.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\is-bun-module\\node_modules\\.bin\\.semver.ps1-nUJNEH9B',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\jiti': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.jiti-sXoKkp5c',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jiti': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.jiti-8aU05xFW',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jiti.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.jiti.cmd-iHtvx0Z7',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jiti.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.jiti.ps1-QcgGodTQ',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\js-yaml': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.js-yaml-0zBvjO2L',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\js-yaml': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.js-yaml-yOByJK1Q',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\js-yaml.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.js-yaml.cmd-9ChF5bNr',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\js-yaml.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.js-yaml.ps1-Ymxr5IbL',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\jsesc': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.jsesc-FYJT6loE',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jsesc': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.jsesc-hZUZELHK',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jsesc.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.jsesc.cmd-ZRoM7j3D',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\jsesc.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.jsesc.ps1-3sLES0GP',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\json5': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.json5-UkSIF10F',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\json5': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.json5-U9As3cbP',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\json5.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.json5.cmd-p5309hW5',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\json5.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.json5.ps1-ss1L3ykv',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\loose-envify': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.loose-envify-MKPVUMwY',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\loose-envify': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.loose-envify-dqAKzPYU',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\loose-envify.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.loose-envify.cmd-xdJJ9yMd',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\loose-envify.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.loose-envify.ps1-O5QGkoI1',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\next': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.next-4r2Iqydk',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\next': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.next-R7y78yB6',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\next.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.next.cmd-XHHCHnso',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\next.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.next.ps1-uEGrWgRQ',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\napi-postinstall': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.napi-postinstall-Tu0uyxnH',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\napi-postinstall': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.napi-postinstall-QPV2v9B2',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\napi-postinstall.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.napi-postinstall.cmd-uuMNZcXq',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\napi-postinstall.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.napi-postinstall.ps1-jQoy9VbV',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\nanoid': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.nanoid-0j6f5XPW',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\nanoid': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.nanoid-j3wFDX3o',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\nanoid.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.nanoid.cmd-whVEeg3W',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\nanoid.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.nanoid.ps1-0jwzZqnY',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\resolve': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.resolve-gqpkVsy1',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\resolve': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.resolve-TS7ymT42',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\resolve.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.resolve.cmd-SnUc0lZp',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\resolve.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.resolve.ps1-noemWYWa',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.semver-HtdLhngQ',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\.semver-GTXeGdTo',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\semver.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\.semver.cmd-Sxeg645F',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\semver.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\sharp\\node_modules\\.bin\\.semver.ps1-GVwPVt3E',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\json5': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.json5-UG97SoLO',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\json5': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\.json5-AHTH6Lnb',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\json5.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\.json5.cmd-GsPUz462',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\json5.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\tsconfig-paths\\node_modules\\.bin\\.json5.ps1-5IHH8M8v',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\typescript': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.typescript-Q1WJVD3i',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsc': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.tsc-bcl6AZ4x',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsc.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.tsc.cmd-9xDfRiyz',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsc.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.tsc.ps1-WNaU9Y3i',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsserver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.tsserver-tvwZHGiH',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsserver.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.tsserver.cmd-r8v06bJq',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\tsserver.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.tsserver.ps1-9HH8rTR2',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\update-browserslist-db': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.update-browserslist-db-XBNhP3Mg',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\update-browserslist-db': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.update-browserslist-db-JBYUFn3V',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\update-browserslist-db.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.update-browserslist-db.cmd-KaZzUgok',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\update-browserslist-db.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.update-browserslist-db.ps1-VOZEY0L4',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\which': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.which-5j1qODBi',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\node-which': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.node-which-5j6Ugnvp',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\node-which.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.node-which.cmd-hmnvRls1',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\node-which.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.node-which.ps1-A7FtkCqG',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@babel\\parser': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@babel\\.parser-Cq2McMLH',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\parser': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.parser-9D3939l4',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\parser.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.parser.cmd-IFSHn8Cg',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\parser.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.parser.ps1-Jfu65qbv',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.semver-xHVzcseB',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\.semver-yuDALyy8',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\semver.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\.semver.cmd-poZjTDlA',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\semver.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\@typescript-eslint\\typescript-estree\\node_modules\\.bin\\.semver.ps1-HQtFMfzq',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.semver-tC71Q9ja',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\semver': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.semver-8svpYfO5',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\semver.cmd': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.semver.cmd-8FZn0goo',
+36 silly reify   'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\semver.ps1': 'C:\\Users\\Usuario\\Downloads\\sistema-cooperativa-export\\proyecto-cooperativa\\node_modules\\.bin\\.semver.ps1-Uc8lrKPJ'
+36 silly reify }
+37 http cache typescript@https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz 0ms (cache hit)
+38 http cache which@https://registry.npmjs.org/which/-/which-2.0.2.tgz 0ms (cache hit)
+39 http cache update-browserslist-db@https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz 0ms (cache hit)
+40 http cache napi-postinstall@https://registry.npmjs.org/napi-postinstall/-/napi-postinstall-0.3.4.tgz 0ms (cache hit)
+41 http cache nanoid@https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz 0ms (cache hit)
+42 http cache js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.1.tgz 0ms (cache hit)
+43 http cache json5@https://registry.npmjs.org/json5/-/json5-2.2.3.tgz 0ms (cache hit)
+44 http cache loose-envify@https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz 0ms (cache hit)
+45 http cache next@https://registry.npmjs.org/next/-/next-16.2.6.tgz 0ms (cache hit)
+46 http cache eslint@https://registry.npmjs.org/eslint/-/eslint-9.39.4.tgz 0ms (cache hit)
+47 http cache jiti@https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz 0ms (cache hit)
+48 http cache @babel/parser@https://registry.npmjs.org/@babel/parser/-/parser-7.29.7.tgz 0ms (cache hit)
+49 http cache jsesc@https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz 0ms (cache hit)
+50 http cache semver@https://registry.npmjs.org/semver/-/semver-7.8.1.tgz 0ms (cache hit)
+51 http cache browserslist@https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz 0ms (cache hit)
+52 http cache resolve@https://registry.npmjs.org/resolve/-/resolve-2.0.0-next.7.tgz 0ms (cache hit)
+53 http cache acorn@https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz 0ms (cache hit)
+54 http cache semver@https://registry.npmjs.org/semver/-/semver-7.8.1.tgz 0ms (cache hit)
+55 http cache semver@https://registry.npmjs.org/semver/-/semver-6.3.1.tgz 0ms (cache hit)
+56 http cache semver@https://registry.npmjs.org/semver/-/semver-7.8.1.tgz 0ms (cache hit)
+57 http cache baseline-browser-mapping@https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.32.tgz 0ms (cache hit)
+58 http cache json5@https://registry.npmjs.org/json5/-/json5-1.0.2.tgz 0ms (cache hit)
+59 silly tarball no local data for next@https://registry.npmjs.org/next/-/next-16.2.6.tgz. Extracting by manifest.
+60 http fetch GET 200 https://registry.npmjs.org/next/-/next-16.2.6.tgz 49858ms (cache miss)
+61 silly CHANGE node_modules/semver
+62 silly CHANGE node_modules/@typescript-eslint/typescript-estree/node_modules/semver
+63 silly CHANGE node_modules/@babel/parser
+64 silly CHANGE node_modules/which
+65 silly CHANGE node_modules/update-browserslist-db
+66 silly CHANGE node_modules/typescript
+67 silly CHANGE node_modules/tsconfig-paths/node_modules/json5
+68 silly CHANGE node_modules/sharp/node_modules/semver
+69 silly CHANGE node_modules/resolve
+70 silly CHANGE node_modules/nanoid
+71 silly CHANGE node_modules/napi-postinstall
+72 silly CHANGE node_modules/next
+73 silly CHANGE node_modules/loose-envify
+74 silly CHANGE node_modules/json5
+75 silly CHANGE node_modules/jsesc
+76 silly CHANGE node_modules/js-yaml
+77 silly CHANGE node_modules/jiti
+78 silly CHANGE node_modules/is-bun-module/node_modules/semver
+79 silly CHANGE node_modules/eslint
+80 silly CHANGE node_modules/browserslist
+81 silly CHANGE node_modules/baseline-browser-mapping
+82 silly CHANGE node_modules/acorn
+83 verbose cwd C:\Users\Usuario\Downloads\sistema-cooperativa-export\proyecto-cooperativa
+84 verbose os Windows_NT 10.0.26200
+85 verbose node v24.16.0
+86 verbose npm  v11.13.0
+87 verbose exit 0
+88 info ok
