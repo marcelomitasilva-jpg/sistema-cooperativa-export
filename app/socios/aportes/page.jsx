@@ -7,11 +7,18 @@ import { supabase } from "@/lib/supabase-client";
 const FORM_INICIAL = {
   socio_id: "",
   fecha: new Date().toISOString().slice(0, 10),
-  tipo: "Aporte ordinario",
+  tipo: "Viatico",
   concepto: "",
   monto: "",
   estado: "Pendiente",
   referencia: "",
+  numero_recibo: "",
+  folio: "",
+  destino: "",
+  tarea: "",
+  saldo_a_favor: "",
+  saldo_en_contra: "",
+  origen_documento: "",
 };
 
 function monto(value) {
@@ -89,9 +96,24 @@ export default function AportesSociosPage() {
       ...form,
       socio_id: Number(form.socio_id),
       monto: monto(form.monto),
+      saldo_a_favor: monto(form.saldo_a_favor),
+      saldo_en_contra: monto(form.saldo_en_contra),
     };
 
-    const { error } = await supabase.from("aportes_deudas_socios").insert([payload]);
+    let { error } = await supabase.from("aportes_deudas_socios").insert([payload]);
+    if (error && /schema cache|column|Could not find/i.test(error.message || "")) {
+      const fallback = {
+        socio_id: payload.socio_id,
+        fecha: payload.fecha,
+        tipo: payload.tipo,
+        concepto: payload.concepto,
+        monto: payload.monto,
+        estado: payload.estado,
+        referencia: payload.referencia,
+      };
+      const retry = await supabase.from("aportes_deudas_socios").insert([fallback]);
+      error = retry.error;
+    }
     if (error) {
       setMensaje(`Error al guardar aporte/deuda: ${error.message}`);
     } else {
@@ -114,9 +136,9 @@ export default function AportesSociosPage() {
       <main className="min-h-screen bg-slate-100 px-4 py-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Aportes y Deudas de Socios</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Cuenta Corriente de Socios</h1>
             <p className="mt-1 text-slate-600">
-              Control de cuotas, multas, adelantos, aportes extraordinarios y saldos pendientes.
+              Control de viaticos, giros, adelantos, aportes, rendiciones y saldos por socio.
             </p>
           </div>
 
@@ -200,6 +222,12 @@ export default function AportesSociosPage() {
                     <option>Multa</option>
                     <option>Deuda</option>
                     <option>Adelanto</option>
+                    <option>Viatico</option>
+                    <option>Giro</option>
+                    <option>Entrega a cuenta</option>
+                    <option>Rendicion</option>
+                    <option>Saldo a favor</option>
+                    <option>Saldo en contra</option>
                     <option>Descuento de liquidacion</option>
                   </select>
                 </div>
@@ -227,6 +255,64 @@ export default function AportesSociosPage() {
                     <input
                       value={form.referencia}
                       onChange={(e) => setForm({ ...form, referencia: e.target.value })}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">Nro recibo</label>
+                    <input
+                      value={form.numero_recibo}
+                      onChange={(e) => setForm({ ...form, numero_recibo: e.target.value })}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">Folio</label>
+                    <input
+                      value={form.folio}
+                      onChange={(e) => setForm({ ...form, folio: e.target.value })}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">Destino</label>
+                    <input
+                      value={form.destino}
+                      onChange={(e) => setForm({ ...form, destino: e.target.value })}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">Tarea</label>
+                    <input
+                      value={form.tarea}
+                      onChange={(e) => setForm({ ...form, tarea: e.target.value })}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">Saldo a favor</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.saldo_a_favor}
+                      onChange={(e) => setForm({ ...form, saldo_a_favor: e.target.value })}
+                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">Saldo en contra</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.saldo_en_contra}
+                      onChange={(e) => setForm({ ...form, saldo_en_contra: e.target.value })}
                       className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                     />
                   </div>
@@ -268,6 +354,7 @@ export default function AportesSociosPage() {
                       <th className="px-3 py-3">Socio</th>
                       <th className="px-3 py-3">Tipo</th>
                       <th className="px-3 py-3 text-right">Monto</th>
+                      <th className="px-3 py-3">Referencia</th>
                       <th className="px-3 py-3">Estado</th>
                       <th className="px-3 py-3 text-right">Accion</th>
                     </tr>
@@ -280,8 +367,17 @@ export default function AportesSociosPage() {
                         <td className="px-3 py-3">
                           <p className="font-semibold">{item.tipo}</p>
                           <p className="text-xs text-slate-500">{item.concepto}</p>
+                          {(item.destino || item.tarea) && (
+                            <p className="text-xs text-slate-500">
+                              {[item.destino, item.tarea].filter(Boolean).join(" | ")}
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-3 text-right font-bold">{monto(item.monto).toFixed(2)} Bs</td>
+                        <td className="px-3 py-3 text-slate-600">
+                          <p>Recibo: {item.numero_recibo || "s/n"}</p>
+                          <p>Folio: {item.folio || "s/f"}</p>
+                        </td>
                         <td className="px-3 py-3">{item.estado}</td>
                         <td className="px-3 py-3 text-right">
                           {item.estado !== "Pagado" && (

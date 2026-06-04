@@ -7,8 +7,22 @@ import { supabase } from "@/lib/supabase-client";
 const CATEGORIAS = [
   "Compra de Repuestos",
   "Combustible / Diesel",
+  "Explosivos",
+  "Herramientas / Materiales",
+  "Viaticos / Pasajes",
+  "Giros / Comisiones",
+  "Servicios externos",
   "Alimentacion y Viaticos",
   "Gastos Generales",
+];
+
+const TIPOS_OPERACION = [
+  "gasto_directo",
+  "entrega_a_cuenta",
+  "rendicion_parcial",
+  "rendicion_final",
+  "pago_deuda",
+  "giro",
 ];
 
 const ESTADOS = ["todos", "pendiente", "aprobado", "rechazado"];
@@ -47,8 +61,17 @@ function descargarCsv(nombreArchivo, filas) {
 
 export default function RendicionPage() {
   const [monto, setMonto] = useState("");
+  const [montoEntregado, setMontoEntregado] = useState("");
+  const [montoRendido, setMontoRendido] = useState("");
   const [concepto, setConcepto] = useState("");
   const [categoria, setCategoria] = useState(CATEGORIAS[0]);
+  const [tipoOperacion, setTipoOperacion] = useState("gasto_directo");
+  const [responsable, setResponsable] = useState("");
+  const [destino, setDestino] = useState("");
+  const [tarea, setTarea] = useState("");
+  const [numeroRecibo, setNumeroRecibo] = useState("");
+  const [folio, setFolio] = useState("");
+  const [requiereIngresoAlmacen, setRequiereIngresoAlmacen] = useState(false);
   const [foto, setFoto] = useState(null);
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const [cargando, setCargando] = useState(false);
@@ -206,21 +229,55 @@ export default function RendicionPage() {
         urlFotoPublica = urlData.publicUrl;
       }
 
-      const { error } = await supabase.from("rendiciones_gastos").insert([
-        {
+      const entregado = Number(montoEntregado || 0);
+      const rendido = Number(montoRendido || monto || 0);
+      const saldo = entregado - rendido;
+      const payload = {
+        monto: Number(monto),
+        categoria,
+        concepto,
+        estado: "pendiente",
+        url_foto: urlFotoPublica,
+        tipo_operacion: tipoOperacion,
+        responsable: responsable || null,
+        destino: destino || null,
+        tarea: tarea || null,
+        numero_recibo: numeroRecibo || null,
+        folio: folio || null,
+        monto_entregado: entregado,
+        monto_rendido: rendido,
+        saldo_a_favor: saldo < 0 ? Math.abs(saldo) : 0,
+        saldo_en_contra: saldo > 0 ? saldo : 0,
+        requiere_ingreso_almacen: requiereIngresoAlmacen,
+        estado_documental: urlFotoPublica ? "con_respaldo" : "pendiente_respaldo",
+      };
+
+      let { error } = await supabase.from("rendiciones_gastos").insert([payload]);
+      if (error && /schema cache|column|Could not find/i.test(error.message || "")) {
+        const fallback = {
           monto: Number(monto),
           categoria,
           concepto,
           estado: "pendiente",
           url_foto: urlFotoPublica,
-        },
-      ]);
+        };
+        const retry = await supabase.from("rendiciones_gastos").insert([fallback]);
+        error = retry.error;
+      }
 
       if (error) throw error;
 
       setMensaje({ texto: "Rendicion registrada correctamente.", tipo: "exito" });
       setMonto("");
+      setMontoEntregado("");
+      setMontoRendido("");
       setConcepto("");
+      setResponsable("");
+      setDestino("");
+      setTarea("");
+      setNumeroRecibo("");
+      setFolio("");
+      setRequiereIngresoAlmacen(false);
       setFoto(null);
       const input = document.getElementById("input-foto");
       if (input) input.value = "";
@@ -294,6 +351,106 @@ export default function RendicionPage() {
                   </button>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">Tipo de operacion</label>
+                <select
+                  value={tipoOperacion}
+                  onChange={(e) => setTipoOperacion(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900"
+                >
+                  {TIPOS_OPERACION.map((item) => (
+                    <option key={item} value={item}>
+                      {item.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Monto entregado</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={montoEntregado}
+                    onChange={(e) => setMontoEntregado(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                    placeholder="Para entrega a cuenta"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Monto rendido</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={montoRendido}
+                    onChange={(e) => setMontoRendido(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                    placeholder="Lo respaldado"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Nro recibo</label>
+                  <input
+                    value={numeroRecibo}
+                    onChange={(e) => setNumeroRecibo(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Folio</label>
+                  <input
+                    value={folio}
+                    onChange={(e) => setFolio(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">Responsable / socio</label>
+                <input
+                  value={responsable}
+                  onChange={(e) => setResponsable(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                  placeholder="Quien recibio o rindio el dinero"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Destino</label>
+                  <input
+                    value={destino}
+                    onChange={(e) => setDestino(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                    placeholder="La Paz, Guanay, mina..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Tarea</label>
+                  <input
+                    value={tarea}
+                    onChange={(e) => setTarea(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                    placeholder="Compra, tramite, pago, comision"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={requiereIngresoAlmacen}
+                  onChange={(e) => setRequiereIngresoAlmacen(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Esta rendicion debe generar/verificar ingreso a almacen
+              </label>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700">Monto declarado (Bs.)</label>

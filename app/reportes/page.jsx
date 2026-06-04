@@ -49,6 +49,7 @@ export default function ReportesPage() {
     asistencias: [],
     sanciones: [],
     asientos: [],
+    cuentasSocios: [],
   });
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState("");
@@ -65,9 +66,10 @@ export default function ReportesPage() {
       supabase.from("asistencias_fallas").select("*, personal_socios(nombre)"),
       supabase.from("sanciones_memorandums").select("*, personal_socios(nombre)"),
       supabase.from("asientos_contables").select("*").order("fecha", { ascending: false }),
+      supabase.from("aportes_deudas_socios").select("*, personal_socios(nombre)"),
     ]);
 
-    const [rendiciones, socios, almacen, liquidaciones, asistencias, sanciones, asientos] =
+    const [rendiciones, socios, almacen, liquidaciones, asistencias, sanciones, asientos, cuentasSocios] =
       consultas.map((resultado) => {
         if (resultado.status === "fulfilled" && !resultado.value.error) {
           return resultado.value.data || [];
@@ -85,7 +87,7 @@ export default function ReportesPage() {
       setMensaje(`Algunos reportes no pudieron cargar: ${errores.join(" | ")}`);
     }
 
-    setDatos({ rendiciones, socios, almacen, liquidaciones, asistencias, sanciones, asientos });
+    setDatos({ rendiciones, socios, almacen, liquidaciones, asistencias, sanciones, asientos, cuentasSocios });
     setCargando(false);
   };
 
@@ -116,6 +118,26 @@ export default function ReportesPage() {
       }, {})
     ).sort((a, b) => b.total - a.total);
 
+    const comprasParaAlmacen = datos.rendiciones.filter(
+      (item) =>
+        item.requiere_ingreso_almacen ||
+        /repuesto|combustible|diesel|explosivo|herramienta|material/i.test(
+          `${item.categoria || ""} ${item.concepto || ""}`
+        )
+    );
+    const sinRespaldo = datos.rendiciones.filter((item) => !item.url_foto);
+    const sinRecibo = datos.rendiciones.filter((item) => !item.numero_recibo);
+
+    const cuentaPorSocio = Object.values(
+      datos.cuentasSocios.reduce((acc, item) => {
+        const key = item.personal_socios?.nombre || `Socio #${item.socio_id}`;
+        acc[key] ||= { label: key, total: 0, pendiente: 0 };
+        acc[key].total += Number(item.monto || 0);
+        if (item.estado !== "Pagado") acc[key].pendiente += Number(item.monto || 0);
+        return acc;
+      }, {})
+    ).sort((a, b) => b.pendiente - a.pendiente);
+
     const liquidacionesPorSocio = Object.values(
       datos.liquidaciones.reduce((acc, item) => {
         const key = item.personal_socios?.nombre || `Socio #${item.socio_id}`;
@@ -145,6 +167,10 @@ export default function ReportesPage() {
       gastosPorCategoria,
       liquidacionesPorSocio,
       almacenPorItem,
+      comprasParaAlmacen,
+      sinRespaldo,
+      sinRecibo,
+      cuentaPorSocio,
       totalDebe: datos.asientos.reduce((acc, item) => acc + Number(item.debe || 0), 0),
       totalHaber: datos.asientos.reduce((acc, item) => acc + Number(item.haber || 0), 0),
     };
@@ -258,6 +284,25 @@ export default function ReportesPage() {
             </div>
           </section>
 
+          <section className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-lg border border-amber-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase text-amber-700">Compras a verificar en almacen</p>
+              <p className="mt-1 text-2xl font-bold text-amber-700">{resumen.comprasParaAlmacen.length}</p>
+            </div>
+            <div className="rounded-lg border border-red-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase text-red-700">Rendiciones sin respaldo</p>
+              <p className="mt-1 text-2xl font-bold text-red-700">{resumen.sinRespaldo.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-500">Rendiciones sin recibo</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{resumen.sinRecibo.length}</p>
+            </div>
+            <div className="rounded-lg border border-indigo-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase text-indigo-700">Cuentas de socios</p>
+              <p className="mt-1 text-2xl font-bold text-indigo-700">{datos.cuentasSocios.length}</p>
+            </div>
+          </section>
+
           <section className="grid gap-6 lg:grid-cols-3">
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-lg font-bold text-slate-900">Gastos por categoria</h2>
@@ -304,6 +349,53 @@ export default function ReportesPage() {
                       value={Math.abs(item.total)}
                       max={maxAlmacen}
                       tone={item.total < 0 ? "bg-red-600" : "bg-sky-600"}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900">Compras que deberian cruzar con almacen</h2>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-slate-600">
+                      <th className="py-2 pr-3">Categoria</th>
+                      <th className="py-2 pr-3">Concepto</th>
+                      <th className="py-2 pr-3">Recibo/Folio</th>
+                      <th className="py-2 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resumen.comprasParaAlmacen.slice(0, 10).map((item) => (
+                      <tr key={item.id_gasto} className="border-b border-slate-100">
+                        <td className="py-2 pr-3">{item.categoria}</td>
+                        <td className="py-2 pr-3">{item.concepto}</td>
+                        <td className="py-2 pr-3">{item.numero_recibo || "s/n"} / {item.folio || "s/f"}</td>
+                        <td className="py-2 text-right">{monto(item.monto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900">Cuenta corriente por socio</h2>
+              <div className="mt-4 space-y-4">
+                {resumen.cuentaPorSocio.length === 0 ? (
+                  <p className="text-sm text-slate-500">Sin movimientos de socios.</p>
+                ) : (
+                  resumen.cuentaPorSocio.slice(0, 8).map((item) => (
+                    <Bar
+                      key={item.label}
+                      label={`${item.label} pendiente`}
+                      value={item.pendiente}
+                      max={Math.max(...resumen.cuentaPorSocio.map((x) => x.pendiente), 0)}
+                      tone="bg-indigo-600"
                     />
                   ))
                 )}
