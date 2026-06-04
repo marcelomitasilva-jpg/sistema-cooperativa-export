@@ -41,7 +41,7 @@ Lista maestra del proyecto (antes en Google Keep).
 ### Almacén (`/almacen`, `/almacen/auditoria`)
 
 - [x] **P0** Corregir selector de movimiento: **Ingreso**, **Egreso**, **Traspaso** ✅ HECHO
-- [ ] **P1** Reporte o **Kardex** de inventario físico (saldos por ítem)
+- [x] **P1** Reporte o **Kardex** de inventario físico (saldos por ítem)
 - [x] Registro de movimientos en `almacen_movimientos_auditado` *(básico)*
 - [x] Vista de auditoría de movimientos *(básico)*
 
@@ -71,7 +71,7 @@ Lista maestra del proyecto (antes en Google Keep).
 ## Fase 2 — Contabilidad (P1) ✅ COMPLETADA
 
 - [x] **P1** Pantalla para visualizar y gestionar el **Plan de Cuentas** ✅ NUEVO módulo `/contabilidad`
-- [ ] **P1** Automatizar **asientos contables** al aprobar rendiciones
+- [x] **P1** Automatizar **asientos contables** al aprobar rendiciones
 - [ ] **P2** Automatizar asientos al registrar ventas de mineral
 
 ---
@@ -176,7 +176,7 @@ _(Agregar ideas nuevas aquí)_
 - [x] Crear modulo `/comision-revisora`.
 - [x] Crear OCR especializado para libros, recibos, folios, caja, almacen, alzas y ventas de oro.
 - [x] Crear cruces iniciales: recibos duplicados, folios repetidos, documentos sin referencia y rendiciones descuadradas.
-- [ ] Ejecutar `docs/supabase-comision-revisora.sql` en Supabase.
+- [x] Ejecutar `docs/supabase-comision-revisora.sql` en Supabase.
 - [ ] Separar libros por flujo: caja, almacen, alzas, ventas de oro y prestamos.
 - [ ] Crear conciliacion avanzada: caja vs recibos fisicos, almacen vs compras, alzas vs ventas, prestamos vs pagos.
 - [ ] Generar informe imprimible para la comision revisora.
@@ -188,7 +188,7 @@ _(Agregar ideas nuevas aquí)_
 
 - [x] Adaptar almacen al flujo real: compra, descargo, verificacion fisica y sello del recibo.
 - [x] Crear SQL para campos reales de almacen, rendiciones y cuenta corriente de socios.
-- [ ] Ejecutar `docs/supabase-mejoras-operativas.sql` en Supabase.
-- [ ] Conectar rendiciones aprobadas con ingreso a almacen cuando corresponda.
-- [ ] Crear cuenta corriente de socio para entregas, giros, viaticos, saldos a favor y saldos en contra.
-- [ ] Crear reporte de compras que deberian tener ingreso a almacen.
+- [x] Ejecutar `docs/supabase-mejoras-operativas.sql` en Supabase.
+- [x] Conectar rendiciones aprobadas con ingreso a almacen cuando corresponda.
+- [x] Crear cuenta corriente de socio para entregas, giros, viaticos, saldos a favor y saldos en contra.
+- [x] Crear reporte de compras que deberian tener ingreso a almacen.

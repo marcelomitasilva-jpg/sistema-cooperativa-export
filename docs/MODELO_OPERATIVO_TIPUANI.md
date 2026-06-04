@@ -79,6 +79,9 @@ Reglas importantes:
 - Algunas compras son consumo directo y no deben aumentar saldo de almacen, pero igual deben quedar justificadas.
 - Si hay diferencia entre descargo y cantidad fisica verificada, el movimiento debe quedar observado.
 - El sello del recibo fisico es una evidencia documental de que almacen verifico el ingreso.
+- Cuando una rendicion aprobada corresponde a insumos de almacen, el sistema crea un movimiento de ingreso con estado `pendiente_verificacion`.
+- Ese movimiento no debe considerarse inventario confirmado hasta que el almacenero verifique fisicamente, complete cantidad/unidad real y marque el recibo como sellado.
+- El campo `origen_rendicion_id` conecta el ingreso de almacen con la rendicion aprobada para evitar doble registro y facilitar auditoria.
 
 ## SQL requerido
 

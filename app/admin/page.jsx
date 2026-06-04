@@ -4,6 +4,105 @@ import { supabase } from '@/lib/supabase-client';
 import NavPrincipal from '@/components/NavPrincipal';
 import { registrarAsientoContable } from '@/lib/asientos-contables';
 
+const PALABRAS_ALMACEN = [
+  'almacen',
+  'combustible',
+  'diesel',
+  'gasolina',
+  'aceite',
+  'grasa',
+  'explosivo',
+  'guia',
+  'masa',
+  'fulminante',
+  'herramienta',
+  'material',
+  'repuesto',
+  'madera',
+  'electrodo',
+  'maquinaria',
+  'equipo',
+];
+
+function normalizarTexto(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function requiereCruceAlmacen(gasto) {
+  if (gasto?.requiere_ingreso_almacen) return true;
+  const texto = normalizarTexto(
+    [gasto?.categoria, gasto?.concepto, gasto?.tipo_operacion, gasto?.destino].join(' ')
+  );
+  return PALABRAS_ALMACEN.some((palabra) => texto.includes(palabra));
+}
+
+function obtenerFechaMovimiento(gasto) {
+  const fecha = gasto?.fecha || gasto?.fecha_gasto || gasto?.created_at;
+  if (!fecha) return new Date().toISOString().slice(0, 10);
+  return String(fecha).slice(0, 10);
+}
+
+async function generarMovimientoAlmacenPendiente(gasto) {
+  if (!requiereCruceAlmacen(gasto)) {
+    return { ok: true, mensaje: '' };
+  }
+
+  const { data: existente, error: errorConsulta } = await supabase
+    .from('almacen_movimientos_auditado')
+    .select('id_movimiento')
+    .eq('origen_rendicion_id', gasto.id_gasto)
+    .limit(1)
+    .maybeSingle();
+
+  if (errorConsulta) {
+    return {
+      ok: false,
+      mensaje: ' No se pudo revisar el cruce con almacen; queda pendiente verificar.',
+    };
+  }
+
+  if (existente) {
+    return { ok: true, mensaje: ' Almacen ya tenia un movimiento vinculado.' };
+  }
+
+  const concepto = String(gasto.concepto || gasto.categoria || 'Compra por rendicion').trim();
+  const payload = {
+    fecha_movimiento: obtenerFechaMovimiento(gasto),
+    item_nombre: concepto.slice(0, 140),
+    cantidad: 1,
+    unidad: 'lote',
+    tipo_movimiento: 'Ingreso',
+    rubro: gasto.categoria || 'Rendicion aprobada',
+    subrubro: gasto.tipo_operacion || null,
+    distribuidor_id: null,
+    proveedor_nombre: null,
+    comprado_por: gasto.responsable || null,
+    recibido_por: [],
+    numero_recibo: gasto.numero_recibo || null,
+    folio: gasto.folio || null,
+    destino_uso: gasto.destino || null,
+    estado_verificacion: 'pendiente_verificacion',
+    sello_recibo: false,
+    origen_rendicion_id: gasto.id_gasto,
+    observaciones:
+      `Generado desde rendicion #${gasto.id_gasto}. ` +
+      'Almacenero debe verificar ingreso fisico, cantidad real y sello del recibo.',
+  };
+
+  const { error } = await supabase.from('almacen_movimientos_auditado').insert([payload]);
+  if (error) {
+    return {
+      ok: false,
+      mensaje: ' No se pudo generar el movimiento de almacen; revisar manualmente.',
+    };
+  }
+
+  return { ok: true, mensaje: ' Movimiento de almacen pendiente generado.' };
+}
+
 export default function AdminPage() {
   const [gastos, setGastos] = useState([]);
   const [mensaje, setMensaje] = useState('');
@@ -39,6 +138,7 @@ export default function AdminPage() {
       if (error) throw error;
 
       let avisoAsiento = '';
+      let avisoAlmacen = '';
       const gasto = gastos.find((item) => item.id_gasto === id);
       if (nuevoEstado === 'aprobado' && gasto) {
         const asiento = await registrarAsientoContable(supabase, {
@@ -51,9 +151,12 @@ export default function AdminPage() {
         avisoAsiento = asiento.ok
           ? ' Asiento contable generado.'
           : ' Estado actualizado; el asiento contable queda pendiente de configurar.';
+
+        const cruceAlmacen = await generarMovimientoAlmacenPendiente(gasto);
+        avisoAlmacen = cruceAlmacen.mensaje;
       }
 
-      setMensaje(`Gasto #${id} actualizado a '${nuevoEstado}' con exito.${avisoAsiento}`);
+      setMensaje(`Gasto #${id} actualizado a '${nuevoEstado}' con exito.${avisoAsiento}${avisoAlmacen}`);
       setTimeout(() => setMensaje(''), 4000); // Limpiar mensaje después de 4 segundos
       obtenerGastos(); // Recargar la lista actualizada
     } catch (error) {
