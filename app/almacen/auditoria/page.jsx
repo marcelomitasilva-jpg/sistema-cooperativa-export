@@ -39,6 +39,7 @@ export default function PanelAuditoria() {
   const [movimientos, setMovimientos] = useState([]);
   const [filtroItem, setFiltroItem] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [filtroVerificacion, setFiltroVerificacion] = useState("todos");
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState("");
 
@@ -70,9 +71,12 @@ export default function PanelAuditoria() {
         .includes(filtroItem.trim().toLowerCase());
       const coincideTipo =
         filtroTipo === "todos" || normalizarMovimiento(movimiento.tipo_movimiento) === filtroTipo;
-      return coincideItem && coincideTipo;
+      const coincideVerificacion =
+        filtroVerificacion === "todos" ||
+        String(movimiento.estado_verificacion || "sin_estado") === filtroVerificacion;
+      return coincideItem && coincideTipo && coincideVerificacion;
     });
-  }, [movimientos, filtroItem, filtroTipo]);
+  }, [movimientos, filtroItem, filtroTipo, filtroVerificacion]);
 
   const kardex = useMemo(() => {
     const mapa = new Map();
@@ -187,6 +191,17 @@ export default function PanelAuditoria() {
                 <option value="egreso">Egresos</option>
                 <option value="traspaso">Traspasos</option>
               </select>
+              <select
+                value={filtroVerificacion}
+                onChange={(e) => setFiltroVerificacion(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos los estados</option>
+                <option value="verificado_fisicamente">Verificado fisicamente</option>
+                <option value="pendiente_verificacion">Pendiente verificacion</option>
+                <option value="observado">Observado</option>
+                <option value="sin_estado">Sin estado</option>
+              </select>
             </div>
 
             <div className="mt-5 overflow-x-auto">
@@ -233,6 +248,8 @@ export default function PanelAuditoria() {
                     <th className="px-3 py-3">Item</th>
                     <th className="px-3 py-3">Tipo</th>
                     <th className="px-3 py-3 text-right">Cantidad</th>
+                    <th className="px-3 py-3">Recibo / Folio</th>
+                    <th className="px-3 py-3">Verificacion</th>
                     <th className="px-3 py-3">Recibido por</th>
                   </tr>
                 </thead>
@@ -243,6 +260,18 @@ export default function PanelAuditoria() {
                       <td className="px-3 py-3 font-semibold text-slate-900">{movimiento.item_nombre}</td>
                       <td className="px-3 py-3">{movimiento.tipo_movimiento || "Ingreso"}</td>
                       <td className="px-3 py-3 text-right font-bold">{movimiento.cantidad}</td>
+                      <td className="px-3 py-3 text-slate-600">
+                        <p>Recibo: {movimiento.numero_recibo || "s/n"}</p>
+                        <p>Folio: {movimiento.folio || "s/f"}</p>
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">
+                        <p className="font-semibold">
+                          {movimiento.estado_verificacion || "sin_estado"}
+                        </p>
+                        <p className="text-xs">
+                          Sello: {movimiento.sello_recibo ? "si" : "no"}
+                        </p>
+                      </td>
                       <td className="px-3 py-3 text-slate-600">
                         {Array.isArray(movimiento.recibido_por)
                           ? movimiento.recibido_por.join(", ")

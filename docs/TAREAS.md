@@ -181,3 +181,14 @@ _(Agregar ideas nuevas aquí)_
 - [ ] Crear conciliacion avanzada: caja vs recibos fisicos, almacen vs compras, alzas vs ventas, prestamos vs pagos.
 - [ ] Generar informe imprimible para la comision revisora.
 - [ ] Agregar estado de revision por observacion: pendiente, aclarado, observado, aprobado.
+
+---
+
+## Fase 9 - Ajustes operativos desde egresos reales
+
+- [x] Adaptar almacen al flujo real: compra, descargo, verificacion fisica y sello del recibo.
+- [x] Crear SQL para campos reales de almacen, rendiciones y cuenta corriente de socios.
+- [ ] Ejecutar `docs/supabase-mejoras-operativas.sql` en Supabase.
+- [ ] Conectar rendiciones aprobadas con ingreso a almacen cuando corresponda.
+- [ ] Crear cuenta corriente de socio para entregas, giros, viaticos, saldos a favor y saldos en contra.
+- [ ] Crear reporte de compras que deberian tener ingreso a almacen.

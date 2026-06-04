@@ -62,6 +62,24 @@ Cruces necesarios:
 - Alzas/produccion vs ventas de oro.
 - Prestamos recibidos vs pagos, saldos e intereses.
 
+## Flujo real de almacen
+
+El almacen no empieza solo con un formulario de ingreso. El flujo real observado es:
+
+- Un socio, trabajador o responsable compra el insumo o item.
+- Presenta su descargo fisico: recibo, factura, nota u otro respaldo.
+- El almacenero verifica fisicamente que el item realmente ingreso.
+- Si esta conforme, registra el ingreso a almacen.
+- El recibo fisico se sella como constancia de verificacion.
+- El movimiento debe quedar conectado por fecha, folio, numero de recibo, comprador, proveedor e item.
+
+Reglas importantes:
+
+- Una compra de repuestos, combustible, madera, electrodos, herramientas o explosivos puede requerir ingreso a almacen.
+- Algunas compras son consumo directo y no deben aumentar saldo de almacen, pero igual deben quedar justificadas.
+- Si hay diferencia entre descargo y cantidad fisica verificada, el movimiento debe quedar observado.
+- El sello del recibo fisico es una evidencia documental de que almacen verifico el ingreso.
+
 ## SQL requerido
 
 Ejecutar en Supabase:
