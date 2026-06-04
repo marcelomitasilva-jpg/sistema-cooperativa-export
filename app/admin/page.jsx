@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import NavPrincipal from '@/components/NavPrincipal';
+import { registrarAsientoContable } from '@/lib/asientos-contables';
 
 export default function AdminPage() {
   const [gastos, setGastos] = useState([]);
@@ -37,7 +38,22 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      setMensaje(`✅ Gasto #${id} actualizado a '${nuevoEstado}' con éxito.`);
+      let avisoAsiento = '';
+      const gasto = gastos.find((item) => item.id_gasto === id);
+      if (nuevoEstado === 'aprobado' && gasto) {
+        const asiento = await registrarAsientoContable(supabase, {
+          modulo_origen: 'rendiciones',
+          referencia_id: id,
+          descripcion: `Aprobacion de rendicion: ${gasto.concepto || gasto.categoria || id}`,
+          debe: Number(gasto.monto || 0),
+          haber: Number(gasto.monto || 0),
+        });
+        avisoAsiento = asiento.ok
+          ? ' Asiento contable generado.'
+          : ' Estado actualizado; el asiento contable queda pendiente de configurar.';
+      }
+
+      setMensaje(`Gasto #${id} actualizado a '${nuevoEstado}' con exito.${avisoAsiento}`);
       setTimeout(() => setMensaje(''), 4000); // Limpiar mensaje después de 4 segundos
       obtenerGastos(); // Recargar la lista actualizada
     } catch (error) {

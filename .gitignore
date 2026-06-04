@@ -29,6 +29,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+dev-server*.log
+
+# local extracted cooperative data
+/imports/
 
 # env files (can opt-in for committing if needed)
 .env*

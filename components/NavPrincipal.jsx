@@ -6,25 +6,32 @@ import { supabase } from "@/lib/supabase-client";
 import { desactivarModoInvitado } from "@/lib/auth-invitado";
 
 const enlaces = [
-  { href: "/panel", label: "🏠 Inicio" },
-  { href: "/rendicion", label: "💰 Rendiciones" },
-  { href: "/almacen", label: "📦 Almacén" },
-  { href: "/contabilidad", label: "📊 Contabilidad" },
-  { href: "/comercializacion", label: "💎 Liquidaciones" },
-  { href: "/socios/asistencias", label: "📋 Asistencias" },
-  { href: "/socios/sanciones", label: "⚖️ Sanciones" },
-  { href: "/admin", label: "🔐 Finanzas" },
+  { href: "/panel", label: "Inicio" },
+  { href: "/rendicion", label: "Rendiciones" },
+  { href: "/puntas", label: "Puntas" },
+  { href: "/produccion", label: "Produccion" },
+  { href: "/almacen", label: "Almacen" },
+  { href: "/contabilidad", label: "Contabilidad" },
+  { href: "/comercializacion", label: "Liquidaciones" },
+  { href: "/comision-revisora", label: "Comision Revisora" },
+  { href: "/socios/aportes", label: "Aportes" },
+  { href: "/socios/asistencias", label: "Asistencias" },
+  { href: "/socios/sanciones", label: "Sanciones" },
+  { href: "/reportes", label: "Reportes" },
+  { href: "/admin", label: "Finanzas" },
 ];
 
 function enlaceActivo(pathname, href) {
-  // Rutas exactas
   if (href === "/panel") return pathname === "/panel";
   if (href === "/admin") return pathname === "/admin";
-  // Rutas con subrutas
   if (href === "/socios/asistencias") return pathname.startsWith("/socios/asistencias");
   if (href === "/socios/sanciones") return pathname.startsWith("/socios/sanciones");
+  if (href === "/socios/aportes") return pathname.startsWith("/socios/aportes");
   if (href === "/almacen") return pathname.startsWith("/almacen");
-  // Otras rutas
+  if (href === "/reportes") return pathname.startsWith("/reportes");
+  if (href === "/puntas") return pathname.startsWith("/puntas");
+  if (href === "/produccion") return pathname.startsWith("/produccion");
+  if (href === "/comision-revisora") return pathname.startsWith("/comision-revisora");
   return pathname === href;
 }
 
@@ -48,10 +55,7 @@ export default function NavPrincipal() {
           Sistema Cooperativa
         </Link>
 
-        <nav
-          className="flex gap-1 overflow-x-auto pb-1 sm:pb-0"
-          aria-label="Navegación principal"
-        >
+        <nav className="flex gap-1 overflow-x-auto pb-1 sm:pb-0" aria-label="Navegacion principal">
           {enlaces.map((item) => {
             const activo = enlaceActivo(pathname, item.href);
             return (

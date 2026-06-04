@@ -1,76 +1,182 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-client';
-import NavPrincipal from '@/components/NavPrincipal';
+
+import { useEffect, useMemo, useState } from "react";
+import NavPrincipal from "@/components/NavPrincipal";
+import { supabase } from "@/lib/supabase-client";
+
+const CATEGORIAS = [
+  "Compra de Repuestos",
+  "Combustible / Diesel",
+  "Alimentacion y Viaticos",
+  "Gastos Generales",
+];
+
+const ESTADOS = ["todos", "pendiente", "aprobado", "rechazado"];
+
+function fechaLocal(fecha) {
+  if (!fecha) return "Sin fecha";
+  return new Date(fecha).toLocaleDateString("es-BO");
+}
+
+function descargarCsv(nombreArchivo, filas) {
+  const encabezados = ["ID", "Fecha", "Categoria", "Concepto", "Estado", "Monto"];
+  const csv = [
+    encabezados.join(","),
+    ...filas.map((g) =>
+      [
+        g.id_gasto,
+        g.created_at || "",
+        g.categoria || "",
+        g.concepto || "",
+        g.estado || "pendiente",
+        Number(g.monto || 0).toFixed(2),
+      ]
+        .map((valor) => `"${String(valor).replaceAll('"', '""')}"`)
+        .join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nombreArchivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function RendicionPage() {
-  const [monto, setMonto] = useState('');
-  const [concepto, setConcepto] = useState('');
-  const [categoria, setCategoria] = useState('Compra de Repuestos');
+  const [monto, setMonto] = useState("");
+  const [concepto, setConcepto] = useState("");
+  const [categoria, setCategoria] = useState(CATEGORIAS[0]);
   const [foto, setFoto] = useState(null);
-  const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
+  const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const [cargando, setCargando] = useState(false);
   const [analizandoIA, setAnalizandoIA] = useState(false);
   const [gastos, setGastos] = useState([]);
-  const saldoInicial = 1500.00;
+  const [saldoInicial, setSaldoInicial] = useState(1500);
+  const [filtros, setFiltros] = useState({
+    estado: "todos",
+    categoria: "todas",
+    desde: "",
+    hasta: "",
+  });
+
+  const obtenerConfiguracion = async () => {
+    const { data, error } = await supabase
+      .from("configuracion_rendicion")
+      .select("saldo_inicial")
+      .order("fecha_vigencia", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && data?.saldo_inicial !== undefined) {
+      setSaldoInicial(Number(data.saldo_inicial || 1500));
+    }
+  };
 
   const obtenerGastos = async () => {
     try {
       const { data, error } = await supabase
-        .from('rendiciones_gastos')
-        .select('*')
-        .order('id_gasto', { ascending: false });
+        .from("rendiciones_gastos")
+        .select("*")
+        .order("id_gasto", { ascending: false });
       if (error) throw error;
       setGastos(data || []);
     } catch (error) {
-      console.error('Error al obtener gastos:', error.message);
+      setMensaje({
+        texto: `Error al cargar rendiciones: ${error.message}`,
+        tipo: "error",
+      });
     }
   };
 
   useEffect(() => {
+    obtenerConfiguracion();
     obtenerGastos();
   }, []);
 
-  const totalGastado = gastos.reduce((total, gasto) => total + parseFloat(gasto.monto || 0), 0);
-  const saldoRestante = saldoInicial - totalGastado;
+  const gastosFiltrados = useMemo(() => {
+    return gastos.filter((gasto) => {
+      const estado = gasto.estado || "pendiente";
+      const fecha = gasto.created_at ? gasto.created_at.slice(0, 10) : "";
 
-  const archivoABase64 = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = (error) => reject(error);
-  });
+      if (filtros.estado !== "todos" && estado !== filtros.estado) return false;
+      if (filtros.categoria !== "todas" && gasto.categoria !== filtros.categoria) return false;
+      if (filtros.desde && fecha && fecha < filtros.desde) return false;
+      if (filtros.hasta && fecha && fecha > filtros.hasta) return false;
+      return true;
+    });
+  }, [gastos, filtros]);
+
+  const resumen = useMemo(() => {
+    const totalRegistrado = gastos.reduce((total, gasto) => total + Number(gasto.monto || 0), 0);
+    const totalAprobado = gastos
+      .filter((gasto) => gasto.estado === "aprobado")
+      .reduce((total, gasto) => total + Number(gasto.monto || 0), 0);
+    const totalPendiente = gastos
+      .filter((gasto) => !gasto.estado || gasto.estado === "pendiente")
+      .reduce((total, gasto) => total + Number(gasto.monto || 0), 0);
+    const porCategoria = CATEGORIAS.map((item) => ({
+      categoria: item,
+      total: gastosFiltrados
+        .filter((gasto) => gasto.categoria === item)
+        .reduce((total, gasto) => total + Number(gasto.monto || 0), 0),
+    })).filter((item) => item.total > 0);
+
+    return {
+      totalRegistrado,
+      totalAprobado,
+      totalPendiente,
+      saldoRestante: saldoInicial - totalAprobado,
+      porCategoria,
+    };
+  }, [gastos, gastosFiltrados, saldoInicial]);
+
+  const archivoABase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = (error) => reject(error);
+    });
 
   const analizarReciboConIA = async () => {
     if (!foto) {
-      setMensaje({ texto: '⚠️ Primero debes seleccionar o tomar una foto de un recibo.', tipo: 'advertencia' });
+      setMensaje({
+        texto: "Primero selecciona o toma una foto de un recibo.",
+        tipo: "advertencia",
+      });
       return;
     }
 
     setAnalizandoIA(true);
-    setMensaje({ texto: '🧠 La IA está analizando visualmente el comprobante...', tipo: 'info' });
+    setMensaje({ texto: "La IA esta analizando el comprobante...", tipo: "info" });
 
     try {
       const base64Data = await archivoABase64(foto);
-      
-      const res = await fetch('/api/analizar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imagenBase64: base64Data, mimeType: foto.type })
+      const res = await fetch("/api/analizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagenBase64: base64Data, mimeType: foto.type }),
       });
 
       const resultado = await res.json();
-
       if (resultado.error) throw new Error(resultado.error);
 
       if (resultado.monto) setMonto(resultado.monto);
       if (resultado.concepto) setConcepto(resultado.concepto);
       if (resultado.categoria) setCategoria(resultado.categoria);
 
-      setMensaje({ texto: '✨ ¡Comprobante escaneado con éxito! Por favor revise los campos completados por la IA.', tipo: 'exito' });
+      setMensaje({
+        texto: "Comprobante escaneado. Revisa los campos antes de guardar.",
+        tipo: "exito",
+      });
     } catch (error) {
-      console.error(error);
-      setMensaje({ texto: '❌ La IA no pudo procesar la imagen automáticamente. Intente registrar los datos manualmente.', tipo: 'error' });
+      setMensaje({
+        texto: `La IA no pudo procesar el comprobante: ${error.message}`,
+        tipo: "error",
+      });
     } finally {
       setAnalizandoIA(false);
     }
@@ -79,174 +185,310 @@ export default function RendicionPage() {
   const handleGuardarGasto = async (e) => {
     e.preventDefault();
     if (!monto || !concepto) {
-      setMensaje({ texto: '⚠️ Por favor, complete el monto y el concepto del gasto.', tipo: 'advertencia' });
+      setMensaje({ texto: "Completa monto y concepto.", tipo: "advertencia" });
       return;
     }
 
     setCargando(true);
-    setMensaje({ texto: '', tipo: '' });
+    setMensaje({ texto: "", tipo: "" });
     let urlFotoPublica = null;
 
     try {
       if (foto) {
-        const nombreArchivo = `${Date.now()}_${foto.name.replace(/\s+/g, '_')}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('recibos')
+        const nombreArchivo = `${Date.now()}_${foto.name.replace(/\s+/g, "_")}`;
+        const { error: uploadError } = await supabase.storage
+          .from("recibos")
           .upload(nombreArchivo, foto);
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from('recibos')
-          .getPublicUrl(nombreArchivo);
-        
+        const { data: urlData } = supabase.storage.from("recibos").getPublicUrl(nombreArchivo);
         urlFotoPublica = urlData.publicUrl;
       }
 
-      const { error } = await supabase
-        .from('rendiciones_gastos')
-        .insert([{ 
-          monto: parseFloat(monto), 
-          categoria, 
-          concepto, 
-          estado: 'pendiente',
-          url_foto: urlFotoPublica 
-        }]);
+      const { error } = await supabase.from("rendiciones_gastos").insert([
+        {
+          monto: Number(monto),
+          categoria,
+          concepto,
+          estado: "pendiente",
+          url_foto: urlFotoPublica,
+        },
+      ]);
 
       if (error) throw error;
 
-      setMensaje({ texto: `✅ Rendición registrada exitosamente en el sistema.`, tipo: 'exito' });
-      setMonto('');
-      setConcepto('');
+      setMensaje({ texto: "Rendicion registrada correctamente.", tipo: "exito" });
+      setMonto("");
+      setConcepto("");
       setFoto(null);
-      document.getElementById('input-foto').value = '';
+      const input = document.getElementById("input-foto");
+      if (input) input.value = "";
       obtenerGastos();
     } catch (error) {
-      setMensaje({ texto: `❌ Error al guardar: ${error.message}`, tipo: 'error' });
+      setMensaje({ texto: `Error al guardar: ${error.message}`, tipo: "error" });
     } finally {
       setCargando(false);
     }
   };
 
-  // Función interna para pintar los colores de los estados del mensaje corporativo
-  const obtenerEstiloMensaje = (tipo) => {
-    const estilosBase = { padding: '14px', borderRadius: '8px', border: '1px solid', textAlign: 'center', marginBottom: '24px', fontSize: '14px', fontWeight: '500' };
-    if (tipo === 'exito') return { ...estilosBase, backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', color: '#047857' };
-    if (tipo === 'error') return { ...estilosBase, backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#b91c1c' };
-    if (tipo === 'info') return { ...estilosBase, backgroundColor: '#eff6ff', borderColor: '#bfdbfe', color: '#1d4ed8' };
-    return { ...estilosBase, backgroundColor: '#fffbp5', borderColor: '#fef08a', color: '#a16207' }; // advertencia
-  };
+  const mensajeClase = {
+    exito: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    error: "border-red-200 bg-red-50 text-red-800",
+    info: "border-blue-200 bg-blue-50 text-blue-800",
+    advertencia: "border-amber-200 bg-amber-50 text-amber-800",
+  }[mensaje.tipo || "info"];
 
   return (
     <>
       <NavPrincipal />
-      <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '24px 16px' }}>
-    <div style={{ maxWidth: '520px', margin: '0 auto', padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)' }}>
-      
-      {/* Encabezado Institucional */}
-      <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '20px', marginBottom: '24px', textAlign: 'center' }}>
-        <h2 style={{ margin: 0, color: '#1e3a8a', fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Sistema de Rendiciones</h2>
-        <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Módulo de Comisión para Socios</p>
-      </div>
+      <main className="min-h-screen bg-slate-100 px-4 py-8">
+        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[420px_1fr]">
+          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="border-b border-slate-200 pb-5">
+              <h1 className="text-2xl font-bold text-slate-900">Sistema de Rendiciones</h1>
+              <p className="mt-1 text-sm font-medium uppercase tracking-wide text-slate-500">
+                Registro de gastos con soporte documental
+              </p>
+            </div>
 
-      {/* Tarjeta de Resumen Financiero */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
-        <div>
-          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Fondo Asignado</span>
-          <div style={{ fontSize: '15px', fontWeight: '500', color: '#334155' }}>{saldoInicial.toFixed(2)} Bs</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Saldo Disp. por Rendir</span>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: saldoRestante < 200 ? '#b91c1c' : '#15803d' }}>{saldoRestante.toFixed(2)} Bs</div>
-        </div>
-      </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase text-slate-500">Fondo asignado</p>
+                <p className="mt-1 text-xl font-bold text-slate-900">{saldoInicial.toFixed(2)} Bs</p>
+              </div>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase text-emerald-700">Saldo disponible</p>
+                <p className="mt-1 text-xl font-bold text-emerald-800">
+                  {resumen.saldoRestante.toFixed(2)} Bs
+                </p>
+              </div>
+            </div>
 
-      {mensaje.texto && <div style={obtenerEstiloMensaje(mensaje.tipo)}>{mensaje.texto}</div>}
+            {mensaje.texto && (
+              <div className={`mt-5 rounded-lg border px-4 py-3 text-sm font-medium ${mensajeClase}`}>
+                {mensaje.texto}
+              </div>
+            )}
 
-      {/* Formulario Principal */}
-      <form onSubmit={handleGuardarGasto} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px' }}>
-        
-        {/* Sección de Carga de Documento */}
-        <div style={{ backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>📸 Adjuntar Recibo o Factura Digital</label>
-          <input id="input-foto" type="file" accept="image/*" onChange={(e) => setFoto(e.target.files[0])} style={{ width: '100%', padding: '8px', fontSize: '13px', borderRadius: '6px', backgroundColor: '#ffffff', boxSizing: 'border-box', border: '1px solid #cbd5e1' }} />
-          
-          {foto && (
-            <button type="button" onClick={analizarReciboConIA} disabled={analizandoIA} style={{ width: '100%', marginTop: '12px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)' }}>
-              {analizandoIA ? '🔮 Procesando documento con IA...' : '✨ Autocompletar Datos con IA'}
-            </button>
-          )}
-        </div>
+            <form onSubmit={handleGuardarGasto} className="mt-6 space-y-4">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                <label className="block text-sm font-semibold text-slate-700">
+                  Adjuntar recibo o factura digital
+                </label>
+                <input
+                  id="input-foto"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setFoto(e.target.files[0])}
+                  className="mt-2 w-full rounded-md border border-slate-300 bg-white p-2 text-sm"
+                />
+                {foto && (
+                  <button
+                    type="button"
+                    onClick={analizarReciboConIA}
+                    disabled={analizandoIA}
+                    className="mt-3 w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
+                  >
+                    {analizandoIA ? "Procesando documento..." : "Autocompletar datos con IA"}
+                  </button>
+                )}
+              </div>
 
-        {/* Campos de Entrada de Datos */}
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Monto Declarado (Bs.)</label>
-          <input type="number" step="any" placeholder="0.00" value={monto} onChange={(e) => setMonto(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box', fontSize: '15px', color: '#1e293b' }} />
-        </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">Monto declarado (Bs.)</label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={monto}
+                  onChange={(e) => setMonto(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                />
+              </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Categoría del Gasto</label>
-          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontSize: '14px', color: '#1e293b' }}>
-            <option value="Compra de Repuestos">Compra de Repuestos</option>
-            <option value="Combustible / Diésel">Combustible / Diésel</option>
-            <option value="Alimentación y Viáticos">Alimentación y Viáticos</option>
-            <option value="Gastos Generales">Gastos Generales</option>
-          </select>
-        </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">Categoria</label>
+                <select
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900"
+                >
+                  {CATEGORIAS.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>Concepto / Detalle del Gasto</label>
-          <textarea placeholder="Escriba el motivo del descargo o deje que la IA lo redacte..." rows="2" value={concepto} onChange={(e) => setConcepto(e.target.value)} style={{ width: '100%', padding: '11px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box', resize: 'none', fontSize: '14px', fontFamily: 'inherit', color: '#1e293b' }}></textarea>
-        </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">Concepto</label>
+                <textarea
+                  rows="3"
+                  placeholder="Detalle del gasto..."
+                  value={concepto}
+                  onChange={(e) => setConcepto(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                />
+              </div>
 
-        <button type="submit" disabled={cargando || analizandoIA} style={{ backgroundColor: cargando ? '#94a3b8' : '#0284c7', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '15px', marginTop: '5px', boxShadow: '0 4px 6px -1px rgba(2, 132, 199, 0.2)', transition: 'background-color 0.2s' }}>
-          {cargando ? 'Registrando en base de datos...' : 'Enviar Rendición Oficial'}
-        </button>
-      </form>
+              <button
+                type="submit"
+                disabled={cargando || analizandoIA}
+                className="w-full rounded-md bg-sky-700 px-4 py-3 text-sm font-bold text-white disabled:bg-slate-400"
+              >
+                {cargando ? "Registrando..." : "Enviar rendicion"}
+              </button>
+            </form>
+          </section>
 
-      {/* Historial con diseño Corporativo */}
-      <div>
-        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1e3a8a', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px', margin: '0 0 12px 0' }}>Comprobantes Presentados</h3>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '12px 8px', textAlign: 'left', color: '#64748b', fontWeight: '600' }}>Detalle de Comisión</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>Soporte</th>
-                <th style={{ padding: '12px 8px', textAlign: 'right', color: '#64748b', fontWeight: '600' }}>Importe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gastos.length === 0 ? (
-                <tr>
-                  <td colSpan="3" style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>No existen rendiciones registradas en esta comisión.</td>
-                </tr>
-              ) : (
-                gastos.map((g) => (
-                  <tr key={g.id_gasto} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }}>
-                    <td style={{ padding: '12px 8px' }}>
-                      <span style={{ fontWeight: '600', color: '#334155' }}>{g.categoria}</span>
-                      <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{g.concepto}</div>
-                    </td>
-                    <td style={{ padding: '12px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
-                      {g.url_foto ? (
-                        <a href={g.url_foto} target="_blank" rel="noreferrer" style={{ display: 'inline-block', color: '#0284c7', textDecoration: 'none', fontWeight: '600', backgroundColor: '#e0f2fe', padding: '4px 8px', borderRadius: '4px', fontSize: '11px' }}>👁️ Ver Doc</a>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#1e293b', whiteSpace: 'nowrap' }}>
-                      {parseFloat(g.monto).toFixed(2)} Bs
-                    </td>
-                  </tr>
-                ))
+          <section className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase text-slate-500">Total registrado</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {resumen.totalRegistrado.toFixed(2)} Bs
+                </p>
+              </div>
+              <div className="rounded-lg border border-emerald-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase text-emerald-700">Aprobado</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-700">
+                  {resumen.totalAprobado.toFixed(2)} Bs
+                </p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase text-amber-700">Pendiente</p>
+                <p className="mt-1 text-2xl font-bold text-amber-700">
+                  {resumen.totalPendiente.toFixed(2)} Bs
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Historial de rendiciones</h2>
+                  <p className="text-sm text-slate-500">{gastosFiltrados.length} registros filtrados</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => descargarCsv("rendiciones.csv", gastosFiltrados)}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Exportar CSV
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <select
+                  value={filtros.estado}
+                  onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  {ESTADOS.map((estado) => (
+                    <option key={estado} value={estado}>
+                      {estado === "todos" ? "Todos los estados" : estado}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filtros.categoria}
+                  onChange={(e) => setFiltros({ ...filtros, categoria: e.target.value })}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="todas">Todas las categorias</option>
+                  {CATEGORIAS.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={filtros.desde}
+                  onChange={(e) => setFiltros({ ...filtros, desde: e.target.value })}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+                <input
+                  type="date"
+                  value={filtros.hasta}
+                  onChange={(e) => setFiltros({ ...filtros, hasta: e.target.value })}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              {resumen.porCategoria.length > 0 && (
+                <div className="mt-5 grid gap-2 md:grid-cols-2">
+                  {resumen.porCategoria.map((item) => (
+                    <div key={item.categoria} className="rounded-md bg-slate-50 p-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-semibold text-slate-700">{item.categoria}</span>
+                        <span className="font-bold text-slate-900">{item.total.toFixed(2)} Bs</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </tbody>
-          </table>
+
+              <div className="mt-5 overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+                      <th className="px-3 py-3">Fecha</th>
+                      <th className="px-3 py-3">Detalle</th>
+                      <th className="px-3 py-3">Estado</th>
+                      <th className="px-3 py-3 text-center">Soporte</th>
+                      <th className="px-3 py-3 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gastosFiltrados.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="px-3 py-8 text-center text-slate-500">
+                          No hay rendiciones para los filtros seleccionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      gastosFiltrados.map((gasto) => (
+                        <tr key={gasto.id_gasto} className="border-b border-slate-100">
+                          <td className="px-3 py-3 text-slate-600">{fechaLocal(gasto.created_at)}</td>
+                          <td className="px-3 py-3">
+                            <p className="font-semibold text-slate-900">{gasto.categoria}</p>
+                            <p className="text-slate-500">{gasto.concepto}</p>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold uppercase text-slate-700">
+                              {gasto.estado || "pendiente"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {gasto.url_foto ? (
+                              <a
+                                href={gasto.url_foto}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-semibold text-sky-700"
+                              >
+                                Ver
+                              </a>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-right font-bold text-slate-900">
+                            {Number(gasto.monto || 0).toFixed(2)} Bs
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
-    </div>
-      </div>
+      </main>
     </>
   );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import NavPrincipal from '@/components/NavPrincipal';
+import { registrarAsientoContable } from '@/lib/asientos-contables';
 
 export default function LiquidacionesPage() {
   const [socios, setSocios] = useState([]);
@@ -100,11 +101,27 @@ export default function LiquidacionesPage() {
         setMensaje('✅ Liquidación actualizada');
         setEditingId(null);
       } else {
-        const { error } = await supabase
+        const { data: insertData, error } = await supabase
           .from('comercializacion_oro')
-          .insert([dataToSubmit]);
+          .insert([dataToSubmit])
+          .select('id, valor_final, fecha')
+          .single();
         if (error) throw error;
-        setMensaje('✅ Liquidación registrada');
+
+        const asiento = await registrarAsientoContable(supabase, {
+          modulo_origen: 'comercializacion',
+          referencia_id: insertData?.id,
+          fecha: insertData?.fecha,
+          descripcion: `Liquidacion de mineral socio #${dataToSubmit.socio_id}`,
+          debe: Number(insertData?.valor_final || dataToSubmit.valor_final || 0),
+          haber: Number(insertData?.valor_final || dataToSubmit.valor_final || 0),
+        });
+
+        setMensaje(
+          asiento.ok
+            ? 'Liquidación registrada y asiento contable generado'
+            : 'Liquidación registrada; el asiento contable queda pendiente de configurar'
+        );
       }
 
       setFormData({

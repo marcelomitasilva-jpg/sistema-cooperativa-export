@@ -110,6 +110,20 @@ Lista maestra del proyecto (antes en Google Keep).
 
 ---
 
+## Fase 7 — Modelo operativo Tipuani/Yungas
+
+- [x] Crear SQL base para puntas, asociados, turnos, lugares de trabajo, producción aurífera, aportes/deudas, liquidaciones por punta y actas
+- [x] Módulo de puntas (`/puntas`)
+- [x] Módulo de producción aurífera por punta/lugar/turno (`/produccion`)
+- [x] Módulo de aportes y deudas de socios (`/socios/aportes`)
+- [ ] Ejecutar `docs/supabase-modelo-operativo-minero.sql` en Supabase
+- [ ] Adaptar liquidaciones al reparto real por punta
+- [ ] Conectar almacén con entrega de insumos a punta/socio
+- [ ] Crear actas de asamblea y decisiones aprobadas
+- [ ] Definir reglas locales de acciones, socios titulares, herederos y representantes
+
+---
+
 ## Tablas Supabase referenciadas
 
 | Tabla | Uso en el sistema |
@@ -153,3 +167,17 @@ Lista maestra del proyecto (antes en Google Keep).
 _(Agregar ideas nuevas aquí)_
 
 - 
+
+---
+
+## Fase 8 - Comision revisora de gestiones anteriores
+
+- [x] Crear SQL base para gestiones revisadas, documentos fisicos y anomalias.
+- [x] Crear modulo `/comision-revisora`.
+- [x] Crear OCR especializado para libros, recibos, folios, caja, almacen, alzas y ventas de oro.
+- [x] Crear cruces iniciales: recibos duplicados, folios repetidos, documentos sin referencia y rendiciones descuadradas.
+- [ ] Ejecutar `docs/supabase-comision-revisora.sql` en Supabase.
+- [ ] Separar libros por flujo: caja, almacen, alzas, ventas de oro y prestamos.
+- [ ] Crear conciliacion avanzada: caja vs recibos fisicos, almacen vs compras, alzas vs ventas, prestamos vs pagos.
+- [ ] Generar informe imprimible para la comision revisora.
+- [ ] Agregar estado de revision por observacion: pendiente, aclarado, observado, aprobado.
