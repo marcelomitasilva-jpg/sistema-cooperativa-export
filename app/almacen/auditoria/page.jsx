@@ -42,6 +42,15 @@ export default function PanelAuditoria() {
   const [filtroVerificacion, setFiltroVerificacion] = useState("todos");
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [verificandoId, setVerificandoId] = useState(null);
+  const [guardandoId, setGuardandoId] = useState(null);
+  const [formVerificacion, setFormVerificacion] = useState({
+    cantidad: "",
+    unidad: "",
+    recibido_por: "",
+    sello_recibo: true,
+    observaciones: "",
+  });
 
   const cargarMovimientos = async () => {
     setCargando(true);
@@ -77,6 +86,13 @@ export default function PanelAuditoria() {
       return coincideItem && coincideTipo && coincideVerificacion;
     });
   }, [movimientos, filtroItem, filtroTipo, filtroVerificacion]);
+
+  const pendientesVerificacion = useMemo(() => {
+    return movimientos.filter(
+      (movimiento) =>
+        String(movimiento.estado_verificacion || "") === "pendiente_verificacion"
+    );
+  }, [movimientos]);
 
   const kardex = useMemo(() => {
     const mapa = new Map();
@@ -117,6 +133,77 @@ export default function PanelAuditoria() {
     );
   }, [kardex]);
 
+  const iniciarVerificacion = (movimiento) => {
+    const recibidoPor = Array.isArray(movimiento.recibido_por)
+      ? movimiento.recibido_por.join(", ")
+      : movimiento.recibido_por || "";
+    setVerificandoId(movimiento.id_movimiento);
+    setFormVerificacion({
+      cantidad: String(movimiento.cantidad || ""),
+      unidad: movimiento.unidad || "",
+      recibido_por: recibidoPor,
+      sello_recibo: Boolean(movimiento.sello_recibo),
+      observaciones: movimiento.observaciones || "",
+    });
+  };
+
+  const actualizarVerificacion = (campo, valor) => {
+    setFormVerificacion((actual) => ({ ...actual, [campo]: valor }));
+  };
+
+  const guardarVerificacion = async (movimiento, estadoFinal) => {
+    const cantidad = Number(formVerificacion.cantidad);
+    if (!cantidad || cantidad <= 0) {
+      setMensaje("La cantidad verificada debe ser mayor a 0.");
+      return;
+    }
+    if (!formVerificacion.unidad.trim()) {
+      setMensaje("Indica la unidad real verificada por almacen.");
+      return;
+    }
+    if (!formVerificacion.recibido_por.trim()) {
+      setMensaje("Indica quien verifico fisicamente el ingreso.");
+      return;
+    }
+
+    setGuardandoId(movimiento.id_movimiento);
+    setMensaje("");
+
+    const observacionBase = formVerificacion.observaciones.trim();
+    const observacionVerificacion =
+      estadoFinal === "observado"
+        ? "Movimiento observado por almacen."
+        : "Ingreso verificado fisicamente por almacen.";
+
+    const { error } = await supabase
+      .from("almacen_movimientos_auditado")
+      .update({
+        cantidad,
+        unidad: formVerificacion.unidad.trim(),
+        recibido_por: [formVerificacion.recibido_por.trim()],
+        sello_recibo: Boolean(formVerificacion.sello_recibo),
+        estado_verificacion: estadoFinal,
+        observaciones: observacionBase
+          ? `${observacionBase}\n${observacionVerificacion}`
+          : observacionVerificacion,
+      })
+      .eq("id_movimiento", movimiento.id_movimiento);
+
+    if (error) {
+      setMensaje(`Error al guardar verificacion: ${error.message}`);
+    } else {
+      setMensaje(
+        estadoFinal === "observado"
+          ? `Movimiento #${movimiento.id_movimiento} marcado como observado.`
+          : `Movimiento #${movimiento.id_movimiento} verificado fisicamente.`
+      );
+      setVerificandoId(null);
+      await cargarMovimientos();
+    }
+
+    setGuardandoId(null);
+  };
+
   return (
     <>
       <NavPrincipal />
@@ -148,12 +235,18 @@ export default function PanelAuditoria() {
           </div>
 
           {mensaje && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+            <div
+              className={`rounded-lg border px-4 py-3 text-sm font-medium ${
+                mensaje.startsWith("Error") || mensaje.startsWith("La ") || mensaje.startsWith("Indica")
+                  ? "border-red-200 bg-red-50 text-red-800"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              }`}
+            >
               {mensaje}
             </div>
           )}
 
-          <section className="grid gap-4 md:grid-cols-4">
+          <section className="grid gap-4 md:grid-cols-5">
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Ingresos</p>
               <p className="mt-1 text-2xl font-bold text-emerald-700">{totales.ingresos}</p>
@@ -169,6 +262,167 @@ export default function PanelAuditoria() {
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Saldo neto</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{totales.saldo}</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase text-amber-700">Por verificar</p>
+              <p className="mt-1 text-2xl font-bold text-amber-800">{pendientesVerificacion.length}</p>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-amber-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Pendientes de verificacion fisica</h2>
+                <p className="text-sm text-slate-500">
+                  Ingresos generados desde rendiciones o descargos que aun deben ser confirmados por almacen.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cargarMovimientos}
+                className="rounded-md border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+              >
+                Actualizar pendientes
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {pendientesVerificacion.length === 0 ? (
+                <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                  No hay movimientos pendientes de verificacion.
+                </div>
+              ) : (
+                pendientesVerificacion.map((movimiento) => {
+                  const editando = verificandoId === movimiento.id_movimiento;
+                  return (
+                    <div
+                      key={movimiento.id_movimiento}
+                      className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-slate-900">
+                            #{movimiento.id_movimiento} - {movimiento.item_nombre}
+                          </p>
+                          <p className="text-xs text-slate-600">
+                            Recibo: {movimiento.numero_recibo || "s/n"} | Folio:{" "}
+                            {movimiento.folio || "s/f"} | Origen rendicion:{" "}
+                            {movimiento.origen_rendicion_id
+                              ? `#${movimiento.origen_rendicion_id}`
+                              : "sin vinculo"}
+                          </p>
+                          <p className="text-xs text-slate-600">
+                            Cantidad registrada: {movimiento.cantidad || 0} {movimiento.unidad || ""}
+                          </p>
+                          {movimiento.observaciones ? (
+                            <p className="max-w-3xl whitespace-pre-line text-xs text-slate-500">
+                              {movimiento.observaciones}
+                            </p>
+                          ) : null}
+                        </div>
+                        {!editando ? (
+                          <button
+                            type="button"
+                            onClick={() => iniciarVerificacion(movimiento)}
+                            className="rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                          >
+                            Verificar ingreso
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {editando ? (
+                        <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 md:grid-cols-5">
+                          <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500">
+                              Cantidad real
+                            </label>
+                            <input
+                              type="number"
+                              step="0.0001"
+                              value={formVerificacion.cantidad}
+                              onChange={(e) => actualizarVerificacion("cantidad", e.target.value)}
+                              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold uppercase text-slate-500">
+                              Unidad
+                            </label>
+                            <input
+                              value={formVerificacion.unidad}
+                              onChange={(e) => actualizarVerificacion("unidad", e.target.value)}
+                              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                              placeholder="pza, lt, kg, lote"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold uppercase text-slate-500">
+                              Verificado por
+                            </label>
+                            <input
+                              value={formVerificacion.recibido_por}
+                              onChange={(e) =>
+                                actualizarVerificacion("recibido_por", e.target.value)
+                              }
+                              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                              placeholder="Almacenero o responsable"
+                            />
+                          </div>
+                          <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={formVerificacion.sello_recibo}
+                              onChange={(e) =>
+                                actualizarVerificacion("sello_recibo", e.target.checked)
+                              }
+                            />
+                            Recibo sellado
+                          </label>
+                          <div className="md:col-span-5">
+                            <label className="block text-xs font-bold uppercase text-slate-500">
+                              Observaciones de verificacion
+                            </label>
+                            <textarea
+                              value={formVerificacion.observaciones}
+                              onChange={(e) =>
+                                actualizarVerificacion("observaciones", e.target.value)
+                              }
+                              className="mt-1 min-h-20 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                              placeholder="Diferencias, faltantes, estado fisico, documento original..."
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2 md:col-span-5 sm:flex-row">
+                            <button
+                              type="button"
+                              disabled={guardandoId === movimiento.id_movimiento}
+                              onClick={() => guardarVerificacion(movimiento, "verificado_fisicamente")}
+                              className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:bg-slate-400"
+                            >
+                              Confirmar ingreso fisico
+                            </button>
+                            <button
+                              type="button"
+                              disabled={guardandoId === movimiento.id_movimiento}
+                              onClick={() => guardarVerificacion(movimiento, "observado")}
+                              className="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800 disabled:bg-slate-400"
+                            >
+                              Marcar observado
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setVerificandoId(null)}
+                              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </section>
 

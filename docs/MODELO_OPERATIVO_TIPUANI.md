@@ -82,6 +82,7 @@ Reglas importantes:
 - Cuando una rendicion aprobada corresponde a insumos de almacen, el sistema crea un movimiento de ingreso con estado `pendiente_verificacion`.
 - Ese movimiento no debe considerarse inventario confirmado hasta que el almacenero verifique fisicamente, complete cantidad/unidad real y marque el recibo como sellado.
 - El campo `origen_rendicion_id` conecta el ingreso de almacen con la rendicion aprobada para evitar doble registro y facilitar auditoria.
+- En `/almacen/auditoria`, el almacenero revisa los pendientes, confirma el ingreso fisico o lo marca como `observado` si hay faltantes, diferencia de cantidad, falta de sello o dudas con el respaldo.
 
 ## SQL requerido
 
