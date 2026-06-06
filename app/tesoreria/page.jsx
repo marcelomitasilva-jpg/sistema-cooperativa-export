@@ -195,6 +195,22 @@ function calcularPago(form) {
   return { total, pago, saldo, estadoPago };
 }
 
+function diasHasta(fecha) {
+  if (!fecha) return null;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const objetivo = new Date(`${fecha}T00:00:00`);
+  return Math.round((objetivo.getTime() - hoy.getTime()) / 86400000);
+}
+
+function textoVencimiento(fecha) {
+  const dias = diasHasta(fecha);
+  if (dias === null) return "Sin fecha compromiso";
+  if (dias < 0) return `Vencido hace ${Math.abs(dias)} dia(s)`;
+  if (dias === 0) return "Vence hoy";
+  return `Vence en ${dias} dia(s)`;
+}
+
 export default function TesoreriaPage() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [movimientos, setMovimientos] = useState([]);
@@ -302,6 +318,43 @@ export default function TesoreriaPage() {
   const totalConsultaDeuda = useMemo(
     () => deudasPendientes.reduce((total, item) => total + numero(item.saldo_pendiente), 0),
     [deudasPendientes]
+  );
+
+  const alarmasVencimiento = useMemo(() => {
+    const pendientes = movimientos
+      .filter((item) => numero(item.saldo_pendiente) > 0)
+      .map((item) => {
+        const dias = diasHasta(item.fecha_compromiso);
+        let nivel = "normal";
+        if (dias !== null && dias < 0) nivel = "vencido";
+        else if (dias !== null && dias <= 3) nivel = "por_vencer";
+        else if (item.compromiso_venta_oro) nivel = "oro";
+
+        return {
+          ...item,
+          dias,
+          nivel,
+          persona: nombreContraparte(item),
+        };
+      });
+
+    return {
+      vencidas: pendientes.filter((item) => item.nivel === "vencido"),
+      porVencer: pendientes.filter((item) => item.nivel === "por_vencer"),
+      compromisoOro: pendientes.filter((item) => item.compromiso_venta_oro),
+      todas: pendientes
+        .filter((item) => item.nivel !== "normal" || item.compromiso_venta_oro)
+        .sort((a, b) => {
+          const prioridad = { vencido: 0, por_vencer: 1, oro: 2, normal: 3 };
+          const porNivel = prioridad[a.nivel] - prioridad[b.nivel];
+          if (porNivel !== 0) return porNivel;
+          return (a.dias ?? 9999) - (b.dias ?? 9999);
+        }),
+    };
+  }, [movimientos, nombreContraparte]);
+
+  const movimientoDisparaAlarma = ["ingreso", "venta_oro", "prestamo_recibido", "devolucion_rendicion"].includes(
+    form.tipo_movimiento
   );
 
   const resumen = useMemo(() => {
@@ -652,6 +705,21 @@ export default function TesoreriaPage() {
               </div>
             </div>
 
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="text-xs font-black uppercase text-red-700">Pagos vencidos</p>
+                <p className="mt-1 text-2xl font-black text-red-900">{alarmasVencimiento.vencidas.length}</p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-black uppercase text-amber-700">Por vencer en 3 dias</p>
+                <p className="mt-1 text-2xl font-black text-amber-900">{alarmasVencimiento.porVencer.length}</p>
+              </div>
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                <p className="text-xs font-black uppercase text-yellow-700">Compromisos de oro</p>
+                <p className="mt-1 text-2xl font-black text-yellow-900">{alarmasVencimiento.compromisoOro.length}</p>
+              </div>
+            </div>
+
             <div className="mt-5 grid gap-3 lg:grid-cols-2">
               {deudasPendientes.slice(0, 8).map((item) => (
                 <article key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -723,6 +791,68 @@ export default function TesoreriaPage() {
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">
                 {tipoActual.ayuda}
               </div>
+
+              {movimientoDisparaAlarma ? (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-wide text-red-700">Alarma antes de usar este ingreso</p>
+                      <h3 className="mt-1 text-xl font-black text-slate-950">Revise pagos vencidos y compromisos</h3>
+                      <p className="mt-1 text-sm font-semibold text-slate-700">
+                        Cuando entra efectivo u oro, el sistema recuerda lo que podria pagarse o apartarse.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-lg bg-white px-3 py-2">
+                        <p className="text-xs font-black uppercase text-red-700">Vencidas</p>
+                        <p className="text-xl font-black text-red-900">{alarmasVencimiento.vencidas.length}</p>
+                      </div>
+                      <div className="rounded-lg bg-white px-3 py-2">
+                        <p className="text-xs font-black uppercase text-amber-700">Por vencer</p>
+                        <p className="text-xl font-black text-amber-900">{alarmasVencimiento.porVencer.length}</p>
+                      </div>
+                      <div className="rounded-lg bg-white px-3 py-2">
+                        <p className="text-xs font-black uppercase text-yellow-700">Oro</p>
+                        <p className="text-xl font-black text-yellow-900">{alarmasVencimiento.compromisoOro.length}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {alarmasVencimiento.todas.length ? (
+                    <div className="mt-4 space-y-2">
+                      {alarmasVencimiento.todas.slice(0, 5).map((item) => (
+                        <div key={item.id} className="rounded-lg border border-red-100 bg-white p-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="font-black text-slate-950">{item.persona}</p>
+                              <p className="text-sm font-semibold text-slate-700">{item.detalle}</p>
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                Recibo {item.numero_recibo || "s/n"} | Folio {item.folio || "s/f"}
+                              </p>
+                            </div>
+                            <div className="text-left sm:text-right">
+                              <p className="text-lg font-black text-red-800">{moneda(item.saldo_pendiente)}</p>
+                              <p className="text-xs font-black uppercase text-red-700">{textoVencimiento(item.fecha_compromiso)}</p>
+                              {item.compromiso_venta_oro ? (
+                                <p className="text-xs font-black uppercase text-yellow-700">Compromiso de oro</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {alarmasVencimiento.todas.length > 5 ? (
+                        <p className="text-sm font-bold text-red-700">
+                          Hay {alarmasVencimiento.todas.length - 5} alarma(s) mas. Revise el modulo Cuentas.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm font-bold text-emerald-800">
+                      No hay pagos vencidos ni compromisos de oro pendientes.
+                    </p>
+                  )}
+                </div>
+              ) : null}
 
               <div className="mt-4 grid gap-3">
                 <div className="grid gap-3 sm:grid-cols-2">
