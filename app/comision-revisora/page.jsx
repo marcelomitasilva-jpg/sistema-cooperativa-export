@@ -1064,21 +1064,21 @@ export default function ComisionRevisoraPage() {
   const gestionActual = gestiones.find((item) => item.id === gestionSeleccionada);
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-[#edf2e6]">
       <NavPrincipal />
 
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-indigo-700">
+            <p className="text-sm font-black uppercase tracking-wide text-emerald-800">
               Comision revisora
             </p>
-            <h1 className="text-3xl font-bold text-slate-900">
-              Reconstruccion y cruce de gestiones pasadas
+            <h1 className="text-3xl font-black text-slate-950">
+              Cargar documentos y encontrar descuadres
             </h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              Carga caja, respaldos, prestamos, rendiciones, almacen, alzas y ventas de oro.
-              El sistema cruza folios, recibos, montos y cantidades para encontrar descuadres.
+            <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
+              Suba cuadernos, recibos, respaldos, almacen, alzas y ventas. El sistema avisa si algo parece repetido,
+              falta respaldo o no cuadra.
             </p>
           </div>
 
@@ -1149,7 +1149,7 @@ export default function ComisionRevisoraPage() {
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[420px_1fr]">
           <div className="space-y-6">
-            <form onSubmit={crearGestion} className="rounded-lg border border-slate-200 bg-white p-5">
+            <form onSubmit={crearGestion} className="module-card p-5">
               <h2 className="text-lg font-bold text-slate-900">Crear gestion revisada</h2>
               <div className="mt-4 grid gap-3">
                 <input
@@ -1182,7 +1182,7 @@ export default function ComisionRevisoraPage() {
               </div>
             </form>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-5">
+            <section className="module-card p-5">
               <h2 className="text-lg font-bold text-slate-900">Extraer tabla manuscrita</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Para cuadernos con columnas variables: fecha, detalle, monto, recibo, folio y observaciones.
@@ -1220,8 +1220,11 @@ export default function ComisionRevisoraPage() {
               </div>
             </section>
 
-            <form onSubmit={guardarDocumento} className="rounded-lg border border-slate-200 bg-white p-5">
-              <h2 className="text-lg font-bold text-slate-900">Registrar documento fisico</h2>
+            <form onSubmit={guardarDocumento} className="module-card p-5">
+              <h2 className="text-lg font-black text-slate-950">Cargar un documento fisico</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                Suba una foto, revise lo que leyo la IA y confirme antes de guardar.
+              </p>
               <div className="mt-4 grid gap-3">
                 <select
                   value={form.tipo_documento}

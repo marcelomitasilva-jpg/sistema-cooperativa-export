@@ -2,24 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase-client";
 import { activarModoInvitado, desactivarModoInvitado } from "@/lib/auth-invitado";
 
 function mensajeError(error) {
   const msg = error?.message || "Error desconocido";
 
   if (msg.includes("Invalid login credentials")) {
-    return "Correo o contraseña incorrectos. Verifique los datos e intente de nuevo.";
+    return "Correo o contrasena incorrectos. Verifique los datos e intente de nuevo.";
   }
   if (msg.includes("Email not confirmed")) {
-    return "El correo no está confirmado. Solución: en Supabase → Authentication → Users, abra el usuario y confirme el correo, o créelo de nuevo con «Auto Confirm User» activado.";
+    return "El correo no esta confirmado. Avise al encargado del sistema para habilitar el usuario.";
   }
   if (msg.includes("fetch failed") || msg.includes("Failed to fetch")) {
     return "No se pudo conectar con el servidor. Revise su internet o firewall.";
   }
   if (msg.includes("TIMEOUT")) {
-    return "El servidor tardó demasiado en responder. Intente otra vez en unos segundos.";
+    return "El servidor tardo demasiado en responder. Intente otra vez en unos segundos.";
   }
 
   return msg;
@@ -38,7 +38,7 @@ export default function LoginPage() {
 
     const correo = email.trim();
     if (!correo || !password) {
-      setError("Complete correo y contraseña.");
+      setError("Complete correo y contrasena.");
       return;
     }
 
@@ -62,7 +62,7 @@ export default function LoginPage() {
       }
 
       if (!resultado.data?.session) {
-        setError("No se obtuvo sesión. Confirme el usuario en Supabase e intente de nuevo.");
+        setError("No se obtuvo sesion. Avise al encargado del sistema.");
         return;
       }
 
@@ -92,68 +92,60 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 px-4">
-      <Link
-        href="/"
-        className="mb-6 text-sm font-medium text-indigo-600 hover:text-indigo-800"
-      >
-        ← Volver al inicio
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[#edf2e6] px-4 py-10">
+      <Link href="/" className="mb-6 text-sm font-bold text-emerald-800 hover:text-emerald-950">
+        Volver al inicio
       </Link>
 
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 shadow-md"
-      >
-        <h2 className="mb-2 text-center text-2xl font-bold text-slate-900">
-          Acceso Comisión
-        </h2>
-        <p className="mb-6 text-center text-sm text-slate-500">
-          Ingrese sus credenciales para continuar
+      <form onSubmit={handleLogin} className="module-card w-full max-w-md p-8">
+        <h1 className="text-center text-3xl font-black text-slate-950">Entrar al sistema</h1>
+        <p className="mt-2 text-center text-sm font-semibold text-slate-600">
+          Use su correo y contrasena de la cooperativa.
         </p>
 
-        {error && (
+        {error ? (
           <div
             role="alert"
-            className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+            className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800"
           >
             {error}
           </div>
-        )}
+        ) : null}
 
-        <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-          Correo
-        </label>
-        <input
-          className="mb-3 w-full rounded border border-slate-300 p-2 text-slate-900 disabled:bg-slate-100"
-          type="email"
-          placeholder="comision@cooperativa.com"
-          required
-          autoComplete="email"
-          disabled={cargando}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className="mt-6">
+          <label className="field-label">Correo</label>
+          <input
+            className="w-full border px-3 py-2 text-slate-900 disabled:bg-slate-100"
+            type="email"
+            placeholder="comision@cooperativa.com"
+            required
+            autoComplete="email"
+            disabled={cargando}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-        <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-          Contraseña
-        </label>
-        <input
-          className="mb-6 w-full rounded border border-slate-300 p-2 text-slate-900 disabled:bg-slate-100"
-          type="password"
-          placeholder="Su contraseña"
-          required
-          autoComplete="current-password"
-          disabled={cargando}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="mt-4">
+          <label className="field-label">Contrasena</label>
+          <input
+            className="w-full border px-3 py-2 text-slate-900 disabled:bg-slate-100"
+            type="password"
+            placeholder="Su contrasena"
+            required
+            autoComplete="current-password"
+            disabled={cargando}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
 
         <button
           type="submit"
           disabled={cargando}
-          className="w-full rounded bg-blue-600 p-2.5 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="big-action mt-6 w-full bg-emerald-700 p-3 font-black text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {cargando ? "Verificando…" : "Ingresar"}
+          {cargando ? "Verificando..." : "Ingresar"}
         </button>
 
         <div className="relative my-6">
@@ -161,7 +153,7 @@ export default function LoginPage() {
             <span className="w-full border-t border-slate-200" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-slate-400">o</span>
+            <span className="bg-white px-2 font-bold text-slate-400">o</span>
           </div>
         </div>
 
@@ -169,19 +161,14 @@ export default function LoginPage() {
           type="button"
           onClick={ingresarComoInvitado}
           disabled={cargando}
-          className="w-full rounded border-2 border-dashed border-slate-300 bg-slate-50 p-2.5 font-semibold text-slate-700 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="big-action w-full border-2 border-dashed border-slate-300 bg-slate-50 p-3 font-black text-slate-700 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Ingresar como invitado
         </button>
-        <p className="mt-2 text-center text-xs text-amber-700">
-          Solo para desarrollo. Sin correo ni contraseña.
-        </p>
-
-        <p className="mt-4 text-center text-xs text-slate-400">
-          Usuario de prueba: <strong>comision@cooperativa.com</strong> /{" "}
-          <strong>Cooperativa2026!</strong>
+        <p className="mt-3 text-center text-xs font-semibold text-amber-700">
+          Solo para pruebas. Sin correo ni contrasena.
         </p>
       </form>
-    </div>
+    </main>
   );
 }

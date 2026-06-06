@@ -5,34 +5,48 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { desactivarModoInvitado } from "@/lib/auth-invitado";
 
-const enlaces = [
-  { href: "/panel", label: "Inicio" },
-  { href: "/rendicion", label: "Rendiciones" },
-  { href: "/puntas", label: "Puntas" },
-  { href: "/produccion", label: "Produccion" },
-  { href: "/almacen", label: "Almacen" },
-  { href: "/contabilidad", label: "Contabilidad" },
-  { href: "/comercializacion", label: "Liquidaciones" },
-  { href: "/comision-revisora", label: "Comision Revisora" },
-  { href: "/socios/aportes", label: "Aportes" },
-  { href: "/socios/asistencias", label: "Asistencias" },
-  { href: "/socios/sanciones", label: "Sanciones" },
-  { href: "/reportes", label: "Reportes" },
-  { href: "/admin", label: "Finanzas" },
+const grupos = [
+  {
+    titulo: "Trabajo diario",
+    enlaces: [
+      { href: "/panel", label: "Inicio" },
+      { href: "/rendicion", label: "Rendir gasto" },
+      { href: "/almacen", label: "Almacen" },
+      { href: "/puntas", label: "Puntas" },
+      { href: "/produccion", label: "Produccion" },
+      { href: "/comercializacion", label: "Oro y liquidacion" },
+    ],
+  },
+  {
+    titulo: "Socios",
+    enlaces: [
+      { href: "/socios/aportes", label: "Aportes" },
+      { href: "/socios/asistencias", label: "Asistencia" },
+      { href: "/socios/sanciones", label: "Multas" },
+    ],
+  },
+  {
+    titulo: "Revision",
+    enlaces: [
+      { href: "/comision-revisora", label: "Comision revisora" },
+      { href: "/almacen/auditoria", label: "Revisar almacen" },
+      { href: "/reportes", label: "Reportes" },
+    ],
+  },
+  {
+    titulo: "Administracion",
+    enlaces: [
+      { href: "/admin", label: "Aprobar gastos" },
+      { href: "/contabilidad", label: "Contabilidad" },
+      { href: "/admin/usuarios", label: "Socios sistema" },
+    ],
+  },
 ];
 
 function enlaceActivo(pathname, href) {
   if (href === "/panel") return pathname === "/panel";
   if (href === "/admin") return pathname === "/admin";
-  if (href === "/socios/asistencias") return pathname.startsWith("/socios/asistencias");
-  if (href === "/socios/sanciones") return pathname.startsWith("/socios/sanciones");
-  if (href === "/socios/aportes") return pathname.startsWith("/socios/aportes");
-  if (href === "/almacen") return pathname.startsWith("/almacen");
-  if (href === "/reportes") return pathname.startsWith("/reportes");
-  if (href === "/puntas") return pathname.startsWith("/puntas");
-  if (href === "/produccion") return pathname.startsWith("/produccion");
-  if (href === "/comision-revisora") return pathname.startsWith("/comision-revisora");
-  return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function NavPrincipal() {
@@ -45,42 +59,54 @@ export default function NavPrincipal() {
     router.push("/login");
   };
 
+  const enlaces = grupos.flatMap((grupo) => grupo.enlaces);
+  const moduloActual = enlaces.find((item) => enlaceActivo(pathname, item.href));
+
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <Link
-          href="/panel"
-          className="text-lg font-bold tracking-tight text-indigo-900 hover:text-indigo-700"
-        >
-          Sistema Cooperativa
-        </Link>
+    <header className="sticky top-0 z-50 border-b border-emerald-900/10 bg-[#f8faf4]/95 shadow-sm backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/panel" className="min-w-0">
+            <p className="text-lg font-black leading-tight text-emerald-950">Cooperativa Minera</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              {moduloActual?.label || "Sistema de trabajo"}
+            </p>
+          </Link>
 
-        <nav className="flex gap-1 overflow-x-auto pb-1 sm:pb-0" aria-label="Navegacion principal">
-          {enlaces.map((item) => {
-            const activo = enlaceActivo(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  activo
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          <button
+            type="button"
+            onClick={cerrarSesion}
+            className="shrink-0 rounded-lg border border-emerald-900/15 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-emerald-50"
+          >
+            Salir
+          </button>
+        </div>
+
+        <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Navegacion principal">
+          {grupos.map((grupo) => (
+            <div key={grupo.titulo} className="flex shrink-0 items-center gap-1 rounded-lg bg-white/80 p-1">
+              <span className="hidden px-2 text-xs font-bold uppercase tracking-wide text-slate-500 md:inline">
+                {grupo.titulo}
+              </span>
+              {grupo.enlaces.map((item) => {
+                const activo = enlaceActivo(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-bold transition ${
+                      activo
+                        ? "bg-emerald-700 text-white shadow-sm"
+                        : "text-slate-700 hover:bg-emerald-50 hover:text-emerald-900"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
-
-        <button
-          type="button"
-          onClick={cerrarSesion}
-          className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-        >
-          Salir
-        </button>
       </div>
     </header>
   );

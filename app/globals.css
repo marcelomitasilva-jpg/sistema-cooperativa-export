@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f4ed;
+  --foreground: #1f2933;
+  --surface: #ffffff;
+  --surface-soft: #f8faf4;
+  --line: #d8dfd0;
+  --brand: #166534;
+  --brand-strong: #14532d;
+  --brand-soft: #dcfce7;
+  --accent: #b45309;
+  --danger: #b91c1c;
+  --radius: 8px;
 }
 
 @theme inline {
@@ -12,15 +21,100 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+main {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)),
+    var(--background) !important;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  min-height: 44px;
+  border-radius: var(--radius) !important;
+  border-color: var(--line) !important;
+  background-color: #fff !important;
+  color: #172033 !important;
+}
+
+textarea {
+  line-height: 1.45;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(22, 101, 52, 0.28);
+  outline-offset: 2px;
+}
+
+button {
+  min-height: 44px;
+}
+
+table input,
+table select,
+table textarea {
+  min-height: 38px;
+}
+
+::placeholder {
+  color: #64748b;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+.page-wrap {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.module-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.07);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.help-text {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.big-action {
+  min-height: 52px;
+  border-radius: var(--radius);
+  font-weight: 800;
 }

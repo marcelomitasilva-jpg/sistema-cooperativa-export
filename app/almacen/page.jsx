@@ -170,18 +170,17 @@ export default function AlmacenForm() {
   return (
     <>
       <NavPrincipal />
-      <main className="min-h-screen bg-slate-100 px-4 py-8">
+      <main className="min-h-screen bg-[#edf2e6] px-4 py-8">
         <div className="mx-auto max-w-5xl space-y-6">
           <section>
             <p className="text-sm font-semibold uppercase tracking-wide text-indigo-700">
               Almacen
             </p>
-            <h1 className="text-3xl font-bold text-slate-900">
-              Ingreso fisico con descargo y sello
+            <h1 className="text-3xl font-black text-slate-950">
+              Registrar lo que entro al almacen
             </h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              Registra la compra del insumo, el descargo presentado, la verificacion fisica del
-              almacenero y el sello del recibo fisico.
+            <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
+              Anote que se compro, quien trajo el descargo, cuanto ingreso fisicamente y si el recibo fue sellado.
             </p>
           </section>
 
@@ -191,7 +190,7 @@ export default function AlmacenForm() {
             </div>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <form onSubmit={handleSubmit} className="module-card p-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <label className="block text-sm font-semibold text-slate-700">Fecha</label>
@@ -378,7 +377,7 @@ export default function AlmacenForm() {
                   onChange={(e) => actualizarCampo("sello_recibo", e.target.checked)}
                   className="h-4 w-4"
                 />
-                Recibo fisico sellado por almacen despues de verificar el ingreso
+                Recibo fisico sellado despues de verificar el ingreso
               </label>
 
               <div className="md:col-span-3">
@@ -397,7 +396,7 @@ export default function AlmacenForm() {
               disabled={loading}
               className="mt-6 w-full rounded-lg bg-blue-700 px-4 py-3 font-bold text-white hover:bg-blue-800 disabled:bg-slate-400"
             >
-              {loading ? "Guardando..." : "Registrar ingreso/verificacion"}
+              {loading ? "Guardando..." : "Guardar ingreso de almacen"}
             </button>
           </form>
         </div>

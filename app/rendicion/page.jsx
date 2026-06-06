@@ -319,13 +319,16 @@ export default function RendicionPage() {
   return (
     <>
       <NavPrincipal />
-      <main className="min-h-screen bg-slate-100 px-4 py-8">
+      <main className="min-h-screen bg-[#edf2e6] px-4 py-8">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[420px_1fr]">
-          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="module-card p-6">
             <div className="border-b border-slate-200 pb-5">
-              <h1 className="text-2xl font-bold text-slate-900">Sistema de Rendiciones</h1>
-              <p className="mt-1 text-sm font-medium uppercase tracking-wide text-slate-500">
-                Registro de gastos con soporte documental
+              <p className="text-sm font-black uppercase tracking-wide text-emerald-800">
+                Rendicion de cuenta
+              </p>
+              <h1 className="mt-1 text-3xl font-black text-slate-950">Cargar gasto con recibo</h1>
+              <p className="mt-2 text-sm font-semibold text-slate-600">
+                Suba la foto, deje que la IA ayude y revise antes de enviar.
               </p>
             </div>
 
@@ -350,9 +353,7 @@ export default function RendicionPage() {
 
             <form onSubmit={handleGuardarGasto} className="mt-6 space-y-4">
               <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-                <label className="block text-sm font-semibold text-slate-700">
-                  Adjuntar recibo o factura digital
-                </label>
+                <label className="block text-base font-black text-slate-800">Foto del recibo o factura</label>
                 <input
                   id="input-foto"
                   type="file"
@@ -367,7 +368,7 @@ export default function RendicionPage() {
                     disabled={analizandoIA}
                     className="mt-3 w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-400"
                   >
-                    {analizandoIA ? "Procesando documento..." : "Autocompletar datos con IA"}
+                    {analizandoIA ? "Leyendo documento..." : "Leer recibo con IA"}
                   </button>
                 )}
               </div>
@@ -469,7 +470,7 @@ export default function RendicionPage() {
                   onChange={(e) => setRequiereIngresoAlmacen(e.target.checked)}
                   className="h-4 w-4"
                 />
-                Esta rendicion debe generar/verificar ingreso a almacen
+                Este gasto debe pasar por almacen
               </label>
 
               <div>
@@ -515,7 +516,7 @@ export default function RendicionPage() {
                 disabled={cargando || analizandoIA}
                 className="w-full rounded-md bg-sky-700 px-4 py-3 text-sm font-bold text-white disabled:bg-slate-400"
               >
-                {cargando ? "Registrando..." : "Enviar rendicion"}
+                {cargando ? "Guardando..." : "Enviar para revision"}
               </button>
             </form>
           </section>
