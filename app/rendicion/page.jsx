@@ -27,6 +27,12 @@ const TIPOS_OPERACION = [
 
 const ESTADOS = ["todos", "pendiente", "aprobado", "rechazado"];
 
+function limpiarDatoIa(valor) {
+  if (valor === null || valor === undefined) return "";
+  const texto = String(valor).trim();
+  return texto.toUpperCase() === "NO LEGIBLE" ? "" : texto;
+}
+
 function fechaLocal(fecha) {
   if (!fecha) return "Sin fecha";
   return new Date(fecha).toLocaleDateString("es-BO");
@@ -187,9 +193,23 @@ export default function RendicionPage() {
       const resultado = await res.json();
       if (resultado.error) throw new Error(resultado.error);
 
-      if (resultado.monto) setMonto(resultado.monto);
-      if (resultado.concepto) setConcepto(resultado.concepto);
-      if (resultado.categoria) setCategoria(resultado.categoria);
+      const numeroDocumento =
+        limpiarDatoIa(resultado.numero_recibo) ||
+        limpiarDatoIa(resultado.numero_factura) ||
+        limpiarDatoIa(resultado.numero_comprobante);
+
+      if (resultado.monto || resultado.monto_total) setMonto(resultado.monto || resultado.monto_total);
+      if (resultado.concepto) setConcepto(limpiarDatoIa(resultado.concepto));
+      if (resultado.categoria && CATEGORIAS.includes(resultado.categoria)) setCategoria(resultado.categoria);
+      if (numeroDocumento) setNumeroRecibo(numeroDocumento);
+      if (resultado.folio) setFolio(limpiarDatoIa(resultado.folio));
+      if (resultado.responsable) setResponsable(limpiarDatoIa(resultado.responsable));
+      if (!resultado.responsable && resultado.proveedor) setResponsable(limpiarDatoIa(resultado.proveedor));
+      if (resultado.destino) setDestino(limpiarDatoIa(resultado.destino));
+      if (resultado.tarea) setTarea(limpiarDatoIa(resultado.tarea));
+      if (typeof resultado.requiere_ingreso_almacen === "boolean") {
+        setRequiereIngresoAlmacen(resultado.requiere_ingreso_almacen);
+      }
 
       setMensaje({
         texto: "Comprobante escaneado. Revisa los campos antes de guardar.",
