@@ -13,7 +13,6 @@ const csvPath =
   );
 const gestion = Number(process.argv.find((arg) => arg.startsWith("--gestion="))?.split("=")[1] || 2019);
 const force = process.argv.includes("--force");
-const loteDescripcion = `Importacion cuaderno egresos paginas 1-6 gestion ${gestion}`;
 
 function loadEnv(filePath) {
   const env = {};
@@ -67,7 +66,7 @@ function parseCsv(text) {
     rows.push(row);
   }
 
-  const headers = rows.shift();
+  const headers = rows.shift().map((header) => String(header || "").replace(/^\uFEFF/, ""));
   return rows
     .filter((item) => item.length === headers.length)
     .map((item) => Object.fromEntries(headers.map((header, index) => [header, item[index]])));
@@ -105,6 +104,14 @@ const rows = parseCsv(fs.readFileSync(csvPath, "utf8"));
 if (!rows.length) {
   throw new Error(`El CSV no tiene filas: ${csvPath}`);
 }
+
+const paginasImportadas = Array.from(
+  new Set(rows.map((row) => Number(row.pagina)).filter((pagina) => Number.isFinite(pagina)))
+).sort((a, b) => a - b);
+const rangoPaginas = paginasImportadas.length
+  ? `${paginasImportadas[0]}-${paginasImportadas[paginasImportadas.length - 1]}`
+  : "sin-rango";
+const loteDescripcion = `Importacion cuaderno egresos paginas ${rangoPaginas} gestion ${gestion}`;
 
 const { data: existingGestion, error: gestionReadError } = await supabase
   .from("comision_gestiones")
@@ -155,7 +162,7 @@ const { data: lote, error: loteError } = await supabase
       gestion_id: gestionRow.id,
       tipo_fuente: "cuaderno_egresos_revisora",
       descripcion: loteDescripcion,
-      cantidad_imagenes: 6,
+      cantidad_imagenes: paginasImportadas.length || null,
       estado: "pendiente_revision",
     },
   ])
