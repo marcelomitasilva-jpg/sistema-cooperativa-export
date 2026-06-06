@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { crearPromptExtraccionCuadernoEgresos } from "../lib/comision-prompts.js";
 import { analizarImagenesLocal } from "./vision-ai-local.mjs";
 
 const projectRoot = process.cwd();
@@ -30,6 +31,25 @@ function pageNumber(fileName) {
 
 function csvEscape(value) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function limpiarDatoIa(value) {
+  if (value === null || value === undefined) return "";
+  const text = String(value).trim();
+  return text.toUpperCase() === "NO LEGIBLE" ? "" : text;
+}
+
+function confianzaIaANumero(value, fallback) {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric;
+
+  const text = String(value || "").trim().toLowerCase();
+  if (text === "alta") return 0.95;
+  if (text === "media") return 0.7;
+  if (text === "baja") return 0.4;
+
+  const fallbackNumeric = Number(fallback);
+  return Number.isFinite(fallbackNumeric) ? fallbackNumeric : "";
 }
 
 function toCsv(rows) {
@@ -126,48 +146,10 @@ for (const fileName of selectedFiles) {
   const data = fs.readFileSync(filePath).toString("base64");
   const pagina = pageNumber(fileName);
 
-  const prompt = `Analiza esta imagen de un cuaderno manuscrito de egresos de una comision revisora.
-No hagas una transcripcion general: extrae cada fila de la tabla.
-
-La tabla puede tener columnas como:
-- Fecha
-- Detalle
-- Monto en bolivianos
-- Nro recibo
-- Nro folio
-- Observaciones
-
-Devuelve solo JSON plano, sin markdown:
-{
-  "pagina": ${pagina},
-  "titulo": "titulo visible de la pagina",
-  "filas": [
-    {
-      "fila": 1,
-      "fecha": "YYYY-MM-DD o vacio si no se lee",
-      "fecha_original": "fecha tal como esta escrita",
-      "detalle": "detalle del gasto",
-      "monto_bs": 0,
-      "numero_recibo": "numero de recibo o vacio",
-      "folio": "numero de folio o vacio",
-      "observaciones": "observacion escrita",
-      "rubro": "Combustible | Explosivos | Prestamos | Telefono | Giros | Empleados | Servicios externos | Viaticos | Materiales | Judicial | Transporte | Gastos generales | otro",
-      "subrubro": "Diesel, Gasolina, Aceite, Grasa, Guia, Masa, Fulminante, Capital, Interes, Pasaje, Encomienda, Repuesto, etc.",
-      "confianza": 0.0,
-      "dudas": "datos dudosos o ilegibles"
-    }
-  ],
-  "observaciones_pagina": "problemas de lectura de esta pagina"
-}
-
-Reglas:
-- No inventes recibos, folios, fechas ni montos.
-- Si un recibo esta vacio, deja el campo vacio.
-- Si un folio se repite en varias filas, mantenlo igual.
-- Si una fecha esta repetida por comillas o marcas, infiere solo cuando sea claro por continuidad.
-- Si un monto tiene decimales o fracciones, conserva el valor decimal.
-- Si no estas seguro, pon el mejor dato y explica en dudas.
-- Usa punto decimal, no coma decimal.`;
+  const prompt = crearPromptExtraccionCuadernoEgresos({
+    pagina,
+    tipoFuente: "cuaderno_egresos_revisora",
+  });
 
   console.log(`Analizando pagina ${pagina}: ${fileName}`);
 
@@ -181,17 +163,25 @@ Reglas:
       pagina,
       archivo: fileName,
       fila: row.fila || index + 1,
-      fecha: row.fecha || "",
-      fecha_original: row.fecha_original || "",
-      detalle: row.detalle || "",
-      monto_bs: row.monto_bs ?? "",
-      numero_recibo: row.numero_recibo || "",
-      folio: row.folio || "",
-      observaciones: row.observaciones || "",
-      rubro: row.rubro || "",
-      subrubro: row.subrubro || "",
-      confianza: row.confianza ?? "",
-      dudas: row.dudas || "",
+      fecha: limpiarDatoIa(row.fecha || row.fecha_documento),
+      fecha_original: limpiarDatoIa(row.fecha_original),
+      detalle: limpiarDatoIa(row.detalle || row.concepto),
+      monto_bs: row.monto_bs ?? row.monto_egreso ?? "",
+      numero_recibo: limpiarDatoIa(row.numero_recibo),
+      folio: limpiarDatoIa(row.folio || row.numero_folio),
+      observaciones: limpiarDatoIa(row.observaciones),
+      rubro: limpiarDatoIa(row.rubro),
+      subrubro: limpiarDatoIa(row.subrubro),
+      confianza: confianzaIaANumero(row.confianza, row.confianza_numerica),
+      dudas: [
+        row.dudas,
+        row.confianza && typeof row.confianza === "string" ? `Confianza IA: ${row.confianza}` : "",
+        Array.isArray(row.campos_dudosos) && row.campos_dudosos.length
+          ? `Campos dudosos: ${row.campos_dudosos.join(", ")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" | "),
     }));
 
     allRows.push(...filas);

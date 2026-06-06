@@ -87,6 +87,24 @@ function opcionalNumero(valor) {
   return Number.isFinite(n) ? n : null;
 }
 
+function limpiarDatoIa(valor) {
+  if (valor === null || valor === undefined) return "";
+  const texto = String(valor).trim();
+  return texto.toUpperCase() === "NO LEGIBLE" ? "" : texto;
+}
+
+function confianzaIaANumero(valor, alternativa) {
+  const valorNumerico = opcionalNumero(valor);
+  if (valorNumerico !== null) return valorNumerico;
+
+  const texto = String(valor || "").trim().toLowerCase();
+  if (texto === "alta") return 0.95;
+  if (texto === "media") return 0.7;
+  if (texto === "baja") return 0.4;
+
+  return opcionalNumero(alternativa);
+}
+
 function moneda(valor) {
   return Number(valor || 0).toLocaleString("es-BO", {
     style: "currency",
@@ -647,20 +665,29 @@ export default function ComisionRevisoraPage() {
           id_temporal: `${Date.now()}-${index}`,
           tipo_documento: fila.tipo_documento || tipoFuenteTabla,
           tipo_movimiento: fila.tipo_movimiento || "egreso",
-          fecha_documento: fila.fecha_documento || "",
-          folio: fila.folio || "",
-          numero_recibo: fila.numero_recibo || "",
-          persona: fila.responsable || fila.persona || "",
-          concepto: fila.concepto || fila.detalle || "",
-          rubro: fila.rubro || "",
-          subrubro: fila.subrubro || "",
-          responsable: fila.responsable || "",
-          destino: fila.destino || "",
-          tarea: fila.tarea || "",
+          fecha_documento: limpiarDatoIa(fila.fecha_documento || fila.fecha),
+          folio: limpiarDatoIa(fila.folio || fila.numero_folio),
+          numero_recibo: limpiarDatoIa(fila.numero_recibo),
+          persona: limpiarDatoIa(fila.responsable || fila.persona),
+          concepto: limpiarDatoIa(fila.concepto || fila.detalle),
+          rubro: limpiarDatoIa(fila.rubro),
+          subrubro: limpiarDatoIa(fila.subrubro),
+          responsable: limpiarDatoIa(fila.responsable),
+          destino: limpiarDatoIa(fila.destino),
+          tarea: limpiarDatoIa(fila.tarea),
           monto_ingreso: fila.monto_ingreso ?? "",
-          monto_egreso: fila.monto_egreso ?? "",
-          observaciones: [fila.observaciones, fila.dudas].filter(Boolean).join(" | "),
-          confianza: fila.confianza ?? "",
+          monto_egreso: fila.monto_egreso ?? fila.monto_bs ?? "",
+          observaciones: [
+            fila.observaciones,
+            fila.dudas,
+            fila.confianza && typeof fila.confianza === "string" ? `Confianza IA: ${fila.confianza}` : "",
+            Array.isArray(fila.campos_dudosos) && fila.campos_dudosos.length
+              ? `Campos dudosos: ${fila.campos_dudosos.join(", ")}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" | "),
+          confianza: confianzaIaANumero(fila.confianza, fila.confianza_numerica) ?? "",
         }))
       );
 
