@@ -10,6 +10,7 @@ const grupos = [
     titulo: "Trabajo diario",
     enlaces: [
       { href: "/panel", label: "Inicio" },
+      { href: "/tesoreria", label: "Tesoreria" },
       { href: "/rendicion", label: "Rendir gasto" },
       { href: "/almacen", label: "Almacen" },
       { href: "/puntas", label: "Puntas" },

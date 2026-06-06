@@ -205,6 +205,19 @@ export default function ContabilidadPage() {
       .sort((a, b) => String(a.asiento.fecha).localeCompare(String(b.asiento.fecha)));
   }, [asientos, cuentaMayor, detalles]);
 
+  const movimientosMayorConSaldo = useMemo(() => {
+    return movimientosMayor.reduce(
+      (acc, mov) => {
+        const saldoCalculado = acc.saldo + numero(mov.debe) - numero(mov.haber);
+        return {
+          saldo: saldoCalculado,
+          items: [...acc.items, { ...mov, saldoCalculado }],
+        };
+      },
+      { saldo: 0, items: [] }
+    ).items;
+  }, [movimientosMayor]);
+
   const guardarCuenta = async (e) => {
     e.preventDefault();
     setMensaje("");
@@ -806,12 +819,7 @@ export default function ContabilidadPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {movimientosMayor.reduce((saldo, mov) => {
-                      const nuevoSaldo = saldo + numero(mov.debe) - numero(mov.haber);
-                      mov.saldoCalculado = nuevoSaldo;
-                      return nuevoSaldo;
-                    }, 0) || null}
-                    {movimientosMayor.map((mov) => (
+                    {movimientosMayorConSaldo.map((mov) => (
                       <tr key={mov.id} className="border-b border-slate-100">
                         <td className="px-3 py-3">{mov.asiento.fecha}</td>
                         <td className="px-3 py-3">{mov.asiento.glosa}</td>
