@@ -72,6 +72,8 @@ const FORM_INICIAL = {
   categoria: "combustible",
   detalle: "",
   monto: "",
+  total_operacion: "",
+  pago_a_cuenta: "",
   forma_pago: "efectivo",
   modalidad_operacion: "contado",
   contraparte_tipo: "ninguna",
@@ -156,14 +158,15 @@ function resolverCuentas(form, cuentas) {
   const otrosIngresos = cuentaPor(cuentas, "Ingreso", ["otros"]) || cuentaPor(cuentas, "Ingreso", ["servicios"]);
   const cuentasRendir = cuentaPor(cuentas, "Activo", ["cuentas", "rendir"]) || cuentaPor(cuentas, "Activo", ["anticipos"]);
   const prestamos = cuentaPor(cuentas, "Pasivo", ["prestamos"]) || cuentaPor(cuentas, "Pasivo", ["cuentas", "pagar"]);
+  const cuentaPorPagar = cuentaPor(cuentas, "Pasivo", ["proveedores"]) || cuentaPor(cuentas, "Pasivo", ["cuentas", "pagar"]);
 
-  if (form.tipo_movimiento === "venta_oro") return { debe: caja, haber: ventaOro };
-  if (form.tipo_movimiento === "ingreso") return { debe: caja, haber: form.categoria === "oro" ? ventaOro : otrosIngresos };
-  if (form.tipo_movimiento === "egreso") return { debe: cuentaGastoPorCategoria(cuentas, form.categoria), haber: caja };
-  if (form.tipo_movimiento === "entrega_a_cuenta") return { debe: cuentasRendir, haber: caja };
-  if (form.tipo_movimiento === "devolucion_rendicion") return { debe: caja, haber: cuentasRendir };
-  if (form.tipo_movimiento === "prestamo_recibido") return { debe: caja, haber: prestamos };
-  if (form.tipo_movimiento === "pago_deuda") return { debe: prestamos, haber: caja };
+  if (form.tipo_movimiento === "venta_oro") return { debe: caja, haber: ventaOro, saldo: cuentaPorPagar };
+  if (form.tipo_movimiento === "ingreso") return { debe: caja, haber: form.categoria === "oro" ? ventaOro : otrosIngresos, saldo: cuentaPorPagar };
+  if (form.tipo_movimiento === "egreso") return { debe: cuentaGastoPorCategoria(cuentas, form.categoria), haber: caja, saldo: cuentaPorPagar };
+  if (form.tipo_movimiento === "entrega_a_cuenta") return { debe: cuentasRendir, haber: caja, saldo: cuentaPorPagar };
+  if (form.tipo_movimiento === "devolucion_rendicion") return { debe: caja, haber: cuentasRendir, saldo: cuentaPorPagar };
+  if (form.tipo_movimiento === "prestamo_recibido") return { debe: caja, haber: prestamos, saldo: prestamos };
+  if (form.tipo_movimiento === "pago_deuda") return { debe: prestamos, haber: caja, saldo: cuentaPorPagar };
   return { debe: null, haber: null };
 }
 
@@ -182,6 +185,14 @@ function colorEstado(estado) {
   if (estado === "observado") return "bg-amber-100 text-amber-800";
   if (estado === "anulado") return "bg-red-100 text-red-800";
   return "bg-slate-100 text-slate-800";
+}
+
+function calcularPago(form) {
+  const total = numero(form.total_operacion || form.monto);
+  const pago = form.pago_a_cuenta === "" ? numero(form.monto) : numero(form.pago_a_cuenta);
+  const saldo = Math.max(total - pago, 0);
+  const estadoPago = saldo <= 0.009 ? "pagado_completo" : pago <= 0.009 ? "sin_pago" : "pago_parcial";
+  return { total, pago, saldo, estadoPago };
 }
 
 export default function TesoreriaPage() {
@@ -242,6 +253,7 @@ export default function TesoreriaPage() {
   const tipoActual = TIPOS[form.tipo_movimiento];
   const cuentasSugeridas = useMemo(() => resolverCuentas(form, cuentas), [form, cuentas]);
   const montoNetoVenta = Math.max(numero(form.monto) - numero(form.deducciones), 0);
+  const pagoCalculado = useMemo(() => calcularPago(form), [form]);
   const sociosPorId = useMemo(() => new Map(socios.map((socio) => [String(socio.id), socio])), [socios]);
   const distribuidoresPorId = useMemo(
     () => new Map(distribuidores.map((distribuidor) => [String(distribuidor.id), distribuidor])),
@@ -261,9 +273,10 @@ export default function TesoreriaPage() {
         }
         if (item.tipo_movimiento === "venta_oro") acc.ventasOro += monto;
         if (item.estado === "observado" || item.estado === "registrado") acc.pendientes += 1;
+        acc.saldos += numero(item.saldo_pendiente);
         return acc;
       },
-      { ingresos: 0, egresos: 0, ventasOro: 0, pendientes: 0 }
+      { ingresos: 0, egresos: 0, ventasOro: 0, pendientes: 0, saldos: 0 }
     );
   }, [movimientos]);
 
@@ -344,8 +357,14 @@ export default function TesoreriaPage() {
       setMensaje("Primero ejecuta docs/supabase-tesoreria.sql en Supabase.");
       return;
     }
-    if (!form.detalle.trim() || numero(form.monto) <= 0) {
-      setMensaje("Completa el detalle y un monto mayor a cero.");
+    const pago = calcularPago(form);
+
+    if (!form.detalle.trim() || pago.total <= 0) {
+      setMensaje("Completa el detalle y el total de la operacion.");
+      return;
+    }
+    if (pago.pago > pago.total) {
+      setMensaje("El pago a cuenta no puede ser mayor que el total.");
       return;
     }
     if (requiereCondiciones(form) && !form.condiciones_prestamo.trim()) {
@@ -372,7 +391,11 @@ export default function TesoreriaPage() {
       tipo_movimiento: form.tipo_movimiento,
       categoria: form.categoria,
       detalle: form.detalle.trim(),
-      monto: form.tipo_movimiento === "venta_oro" ? montoNetoVenta : numero(form.monto),
+      monto: form.tipo_movimiento === "venta_oro" ? montoNetoVenta : pago.pago,
+      total_operacion: form.tipo_movimiento === "venta_oro" ? montoNetoVenta : pago.total,
+      pago_a_cuenta: form.tipo_movimiento === "venta_oro" ? montoNetoVenta : pago.pago,
+      saldo_pendiente: form.tipo_movimiento === "venta_oro" ? 0 : pago.saldo,
+      estado_pago: form.tipo_movimiento === "venta_oro" ? "pagado_completo" : pago.estadoPago,
       forma_pago: form.forma_pago,
       modalidad_operacion: form.modalidad_operacion,
       contraparte_tipo: form.contraparte_tipo,
@@ -430,13 +453,17 @@ export default function TesoreriaPage() {
         interes_detalle,
         compromiso_venta_oro,
         condiciones_prestamo,
+        total_operacion,
+        pago_a_cuenta,
+        saldo_pendiente,
+        estado_pago,
         ...payloadBasico
       } = payload;
       ({ data: movimiento, error } = await insertarMovimiento({
         ...payloadBasico,
         observaciones: [
           payload.observaciones,
-          `Condiciones no guardadas por falta de SQL actualizado: modalidad ${modalidad_operacion}, contraparte ${contraparte_tipo}, socio ${socio_id || ""}, distribuidor ${distribuidor_id || ""}, nombre ${contraparte_nombre || ""}, origen ${moneda_origen}, devolucion ${moneda_devolucion}, monto prestamo ${monto_prestamo || ""}, gramos ${gramos_prestamo || ""}, fecha compromiso ${fecha_compromiso || ""}, interes ${tiene_interes ? interes_detalle || "si" : "no"}, compromiso oro ${compromiso_venta_oro ? "si" : "no"}, condiciones ${condiciones_prestamo || ""}`,
+          `Condiciones no guardadas por falta de SQL actualizado: modalidad ${modalidad_operacion}, contraparte ${contraparte_tipo}, socio ${socio_id || ""}, distribuidor ${distribuidor_id || ""}, nombre ${contraparte_nombre || ""}, origen ${moneda_origen}, devolucion ${moneda_devolucion}, monto prestamo ${monto_prestamo || ""}, gramos ${gramos_prestamo || ""}, fecha compromiso ${fecha_compromiso || ""}, interes ${tiene_interes ? interes_detalle || "si" : "no"}, compromiso oro ${compromiso_venta_oro ? "si" : "no"}, total ${total_operacion || ""}, pago a cuenta ${pago_a_cuenta || ""}, saldo ${saldo_pendiente || ""}, estado pago ${estado_pago || ""}, condiciones ${condiciones_prestamo || ""}`,
         ].filter(Boolean).join(" | "),
       }));
     }
@@ -451,6 +478,33 @@ export default function TesoreriaPage() {
 
     let asiento = { ok: false };
     if (estadoInicial !== "observado") {
+      const detallesAsiento = [
+        {
+          cuenta_id: debe.id_cuenta,
+          descripcion: form.detalle.trim(),
+          debe: payload.total_operacion || payload.monto,
+          haber: 0,
+        },
+      ];
+
+      if (payload.monto > 0) {
+        detallesAsiento.push({
+          cuenta_id: haber.id_cuenta,
+          descripcion: form.detalle.trim(),
+          debe: 0,
+          haber: payload.monto,
+        });
+      }
+
+      if (payload.saldo_pendiente > 0 && cuentasSugeridas.saldo?.id_cuenta) {
+        detallesAsiento.push({
+          cuenta_id: cuentasSugeridas.saldo.id_cuenta,
+          descripcion: `Saldo pendiente: ${form.detalle.trim()}`,
+          debe: 0,
+          haber: payload.saldo_pendiente,
+        });
+      }
+
       asiento = await registrarAsientoContable(supabase, {
         fecha: form.fecha,
         descripcion: `${TIPOS[form.tipo_movimiento].titulo}: ${form.detalle.trim()}`,
@@ -458,20 +512,7 @@ export default function TesoreriaPage() {
         modulo_origen: "tesoreria",
         referencia_id: movimiento.id,
         usuario_nombre: form.creado_por || form.responsable || "Tesorero",
-        detalles: [
-          {
-            cuenta_id: debe.id_cuenta,
-            descripcion: form.detalle.trim(),
-            debe: payload.monto,
-            haber: 0,
-          },
-          {
-            cuenta_id: haber.id_cuenta,
-            descripcion: form.detalle.trim(),
-            debe: 0,
-            haber: payload.monto,
-          },
-        ],
+        detalles: detallesAsiento,
       });
     }
 
@@ -523,7 +564,7 @@ export default function TesoreriaPage() {
             </div>
           ) : null}
 
-          <section className="grid gap-4 md:grid-cols-4">
+          <section className="grid gap-4 md:grid-cols-5">
             <div className="module-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Entradas registradas</p>
               <p className="mt-1 text-2xl font-black text-emerald-800">{moneda(resumen.ingresos)}</p>
@@ -539,6 +580,10 @@ export default function TesoreriaPage() {
             <div className="module-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Por revisar</p>
               <p className="mt-1 text-2xl font-black text-slate-900">{resumen.pendientes}</p>
+            </div>
+            <div className="module-card p-4">
+              <p className="text-xs font-black uppercase text-slate-500">Saldos pendientes</p>
+              <p className="mt-1 text-2xl font-black text-amber-800">{moneda(resumen.saldos)}</p>
             </div>
           </section>
 
@@ -573,10 +618,53 @@ export default function TesoreriaPage() {
                     <input type="date" value={form.fecha} onChange={(e) => actualizar("fecha", e.target.value)} className="w-full border px-3 py-2" />
                   </div>
                   <div>
-                    <label className="field-label">Monto Bs</label>
+                    <label className="field-label">Pago de hoy Bs</label>
                     <input type="number" step="0.01" min="0" value={form.monto} onChange={(e) => actualizar("monto", e.target.value)} className="w-full border px-3 py-2" />
                   </div>
                 </div>
+
+                {form.tipo_movimiento !== "venta_oro" ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="font-black text-amber-900">Pago a cuenta o saldo pendiente</p>
+                    <p className="mt-1 text-xs font-semibold text-amber-800">
+                      Si no se paga completo, anote el total y cuanto se paga hoy. El sistema calcula lo que queda debiendo.
+                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <label className="field-label">Total compra/deuda Bs</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={form.total_operacion}
+                          onChange={(e) => actualizar("total_operacion", e.target.value)}
+                          placeholder="Si queda vacio usa pago de hoy"
+                          className="w-full border px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="field-label">Pago a cuenta Bs</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={form.pago_a_cuenta}
+                          onChange={(e) => {
+                            actualizar("pago_a_cuenta", e.target.value);
+                            actualizar("monto", e.target.value);
+                          }}
+                          placeholder="Puede ser 0"
+                          className="w-full border px-3 py-2"
+                        />
+                      </div>
+                      <div className="rounded-lg border border-amber-300 bg-white px-3 py-2">
+                        <p className="text-xs font-black uppercase text-amber-700">Saldo pendiente</p>
+                        <p className="mt-1 text-lg font-black text-amber-900">{moneda(pagoCalculado.saldo)}</p>
+                        <p className="text-xs font-semibold text-amber-700">{pagoCalculado.estadoPago.replace("_", " ")}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div>
                   <label className="field-label">Detalle sencillo</label>
@@ -831,6 +919,9 @@ export default function TesoreriaPage() {
                   <p className="font-black">Contabilidad sugerida</p>
                   <p>Debe: {cuentasSugeridas.debe ? `${cuentasSugeridas.debe.codigo_cuenta} - ${cuentasSugeridas.debe.nombre_cuenta}` : "Falta cuenta"}</p>
                   <p>Haber: {cuentasSugeridas.haber ? `${cuentasSugeridas.haber.codigo_cuenta} - ${cuentasSugeridas.haber.nombre_cuenta}` : "Falta cuenta"}</p>
+                  {pagoCalculado.saldo > 0 ? (
+                    <p>Saldo por pagar: {cuentasSugeridas.saldo ? `${cuentasSugeridas.saldo.codigo_cuenta} - ${cuentasSugeridas.saldo.nombre_cuenta}` : "Falta cuenta"}</p>
+                  ) : null}
                 </div>
 
                 <button type="submit" disabled={guardando} className={`${tipoActual.color} rounded-lg px-5 py-3 font-black text-white disabled:opacity-60`}>
@@ -851,7 +942,7 @@ export default function TesoreriaPage() {
               </div>
 
               <div className="mt-5 overflow-x-auto">
-                <table className="min-w-[1120px] text-sm">
+                <table className="min-w-[1240px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
                       <th className="px-3 py-3">Fecha</th>
@@ -861,6 +952,7 @@ export default function TesoreriaPage() {
                       <th className="px-3 py-3">Contraparte</th>
                       <th className="px-3 py-3">Recibo/Folio</th>
                       <th className="px-3 py-3 text-right">Monto</th>
+                      <th className="px-3 py-3 text-right">Saldo</th>
                       <th className="px-3 py-3">Estado</th>
                     </tr>
                   </thead>
@@ -894,6 +986,10 @@ export default function TesoreriaPage() {
                           {item.numero_recibo || "s/n"} / {item.folio || "s/f"}
                         </td>
                         <td className="px-3 py-3 text-right font-black">{moneda(item.monto)}</td>
+                        <td className="px-3 py-3 text-right">
+                          <p className="font-black text-amber-800">{moneda(item.saldo_pendiente)}</p>
+                          {item.estado_pago ? <p className="text-xs font-semibold text-slate-500">{item.estado_pago.replace("_", " ")}</p> : null}
+                        </td>
                         <td className="px-3 py-3">
                           <span className={`rounded-full px-2 py-1 text-xs font-black ${colorEstado(item.estado)}`}>
                             {item.estado}

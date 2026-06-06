@@ -20,7 +20,13 @@ create table if not exists public.tesoreria_movimientos (
   ),
   categoria text not null default 'otros',
   detalle text not null,
-  monto numeric(14,2) not null check (monto > 0),
+  monto numeric(14,2) not null default 0 check (monto >= 0),
+  total_operacion numeric(14,2),
+  pago_a_cuenta numeric(14,2),
+  saldo_pendiente numeric(14,2),
+  estado_pago text not null default 'pagado_completo' check (
+    estado_pago in ('pagado_completo', 'pago_parcial', 'sin_pago', 'saldo_cancelado')
+  ),
   forma_pago text not null default 'efectivo' check (forma_pago in ('efectivo', 'banco', 'mixto', 'otro')),
   modalidad_operacion text not null default 'contado' check (
     modalidad_operacion in (
@@ -153,6 +159,10 @@ grant usage, select on sequence public.tesoreria_respaldos_id_seq to anon, authe
 
 -- Si ya creaste la tabla antes, estas lineas agregan los campos nuevos sin borrar datos.
 alter table public.tesoreria_movimientos
+  add column if not exists total_operacion numeric(14,2),
+  add column if not exists pago_a_cuenta numeric(14,2),
+  add column if not exists saldo_pendiente numeric(14,2),
+  add column if not exists estado_pago text not null default 'pagado_completo',
   add column if not exists modalidad_operacion text not null default 'contado',
   add column if not exists contraparte_tipo text not null default 'ninguna',
   add column if not exists socio_id bigint references public.personal_socios(id),
@@ -167,6 +177,40 @@ alter table public.tesoreria_movimientos
   add column if not exists interes_detalle text,
   add column if not exists compromiso_venta_oro boolean not null default false,
   add column if not exists condiciones_prestamo text;
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_constraint
+    where conname = 'tesoreria_movimientos_monto_check'
+      and conrelid = 'public.tesoreria_movimientos'::regclass
+  ) then
+    alter table public.tesoreria_movimientos
+      drop constraint tesoreria_movimientos_monto_check;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'tesoreria_movimientos_monto_no_negativo'
+      and conrelid = 'public.tesoreria_movimientos'::regclass
+  ) then
+    alter table public.tesoreria_movimientos
+      add constraint tesoreria_movimientos_monto_no_negativo check (monto >= 0);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'tesoreria_movimientos_estado_pago_check'
+      and conrelid = 'public.tesoreria_movimientos'::regclass
+  ) then
+    alter table public.tesoreria_movimientos
+      add constraint tesoreria_movimientos_estado_pago_check
+      check (estado_pago in ('pagado_completo', 'pago_parcial', 'sin_pago', 'saldo_cancelado'));
+  end if;
+end $$;
 
 create index if not exists idx_tesoreria_movimientos_socio
   on public.tesoreria_movimientos(socio_id);
