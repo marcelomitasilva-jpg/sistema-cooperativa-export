@@ -60,6 +60,21 @@ const FORM_INICIAL = {
   observaciones: "",
 };
 
+const CAMPOS_REVISION_DOCUMENTO = [
+  { key: "tipo_documento", label: "Tipo de documento" },
+  { key: "tipo_movimiento", label: "Movimiento" },
+  { key: "fecha_documento", label: "Fecha" },
+  { key: "folio", label: "Folio" },
+  { key: "numero_recibo", label: "Recibo" },
+  { key: "persona", label: "Persona/proveedor" },
+  { key: "concepto", label: "Concepto" },
+  { key: "monto_ingreso", label: "Ingreso" },
+  { key: "monto_egreso", label: "Egreso" },
+  { key: "monto_rendido", label: "Rendido" },
+  { key: "rubro", label: "Rubro" },
+  { key: "subrubro", label: "Subrubro" },
+];
+
 const RESPALDO_INICIAL = {
   documento_id: "",
   tipo_respaldo: "recibo",
@@ -362,6 +377,7 @@ export default function ComisionRevisoraPage() {
   const [documentos, setDocumentos] = useState([]);
   const [respaldos, setRespaldos] = useState([]);
   const [form, setForm] = useState(FORM_INICIAL);
+  const [revisionDocumento, setRevisionDocumento] = useState(null);
   const [filasExtraidas, setFilasExtraidas] = useState([]);
   const [fotosTabla, setFotosTabla] = useState([]);
   const [tipoFuenteTabla, setTipoFuenteTabla] = useState("cuaderno_egresos_revisora");
@@ -464,6 +480,43 @@ export default function ComisionRevisoraPage() {
 
   const anomalias = useMemo(() => detectarAnomalias(documentos), [documentos]);
 
+  const avisosRevisionDocumento = useMemo(() => {
+    if (!revisionDocumento) return [];
+
+    const avisos = [];
+    const montoTotal = numero(form.monto_ingreso) + numero(form.monto_egreso) + numero(form.monto_rendido);
+
+    if (!form.concepto.trim()) avisos.push("Falta concepto o detalle del documento.");
+    if (montoTotal <= 0 && form.tipo_movimiento !== "neutro") {
+      avisos.push("Falta monto en ingreso, egreso o rendido.");
+    }
+    if (!form.numero_recibo.trim() && !form.folio.trim()) {
+      avisos.push("No hay numero de recibo ni folio. Usa fecha, concepto y monto como guia.");
+    }
+    if (revisionDocumento.camposDudosos.length) {
+      avisos.push(`Campos dudosos marcados por IA: ${revisionDocumento.camposDudosos.join(", ")}.`);
+    }
+    if (revisionDocumento.confianzaTexto === "baja") {
+      avisos.push("La IA marco confianza baja. Conviene revisar con mas cuidado antes de guardar.");
+    }
+
+    return avisos;
+  }, [form, revisionDocumento]);
+
+  const correccionesRevisionDocumento = useMemo(() => {
+    if (!revisionDocumento) return [];
+
+    return CAMPOS_REVISION_DOCUMENTO.filter((campo) => {
+      const original = revisionDocumento.original[campo.key] ?? "";
+      const actual = form[campo.key] ?? "";
+      return String(original).trim() !== String(actual).trim();
+    }).map((campo) => ({
+      ...campo,
+      original: revisionDocumento.original[campo.key] ?? "",
+      actual: form[campo.key] ?? "",
+    }));
+  }, [form, revisionDocumento]);
+
   const archivoABase64 = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -517,39 +570,58 @@ export default function ComisionRevisoraPage() {
       const resultado = await res.json();
       if (resultado.error) throw new Error(resultado.error);
 
-      setForm((actual) => ({
-        ...actual,
+      const confianzaTexto =
+        typeof resultado.confianza === "string" ? resultado.confianza.trim().toLowerCase() : "";
+      const siguienteForm = {
+        ...form,
         fuente: "foto_ia",
-        tipo_documento: resultado.tipo_documento || actual.tipo_documento,
-        tipo_movimiento: resultado.tipo_movimiento || actual.tipo_movimiento,
-        fecha_documento: resultado.fecha_documento || actual.fecha_documento,
-        folio: resultado.folio || actual.folio,
-        numero_recibo: resultado.numero_recibo || actual.numero_recibo,
-        persona: resultado.persona || actual.persona,
-        concepto: resultado.concepto || actual.concepto,
-        categoria: resultado.categoria || actual.categoria,
-        rubro: resultado.rubro || actual.rubro,
-        subrubro: resultado.subrubro || actual.subrubro,
-        responsable: resultado.responsable || actual.responsable,
-        destino: resultado.destino || actual.destino,
-        tarea: resultado.tarea || actual.tarea,
-        monto_ingreso: resultado.monto_ingreso ?? actual.monto_ingreso,
-        monto_egreso: resultado.monto_egreso ?? actual.monto_egreso,
-        monto_rendido: resultado.monto_rendido ?? actual.monto_rendido,
-        saldo_libro: resultado.saldo_libro ?? actual.saldo_libro,
-        cantidad: resultado.cantidad ?? actual.cantidad,
-        unidad: resultado.unidad || actual.unidad,
-        item: resultado.item || actual.item,
-        contraparte: resultado.contraparte || actual.contraparte,
-        interes_porcentaje: resultado.interes_porcentaje ?? actual.interes_porcentaje,
-        saldo_a_favor: resultado.saldo_a_favor ?? actual.saldo_a_favor,
-        saldo_en_contra: resultado.saldo_en_contra ?? actual.saldo_en_contra,
-        texto_extraido: resultado.texto_extraido || actual.texto_extraido,
-        confianza: resultado.confianza ?? actual.confianza,
-        observaciones: resultado.observaciones || actual.observaciones,
-      }));
+        tipo_documento: limpiarDatoIa(resultado.tipo_documento) || form.tipo_documento,
+        tipo_movimiento: limpiarDatoIa(resultado.tipo_movimiento) || form.tipo_movimiento,
+        fecha_documento: limpiarDatoIa(resultado.fecha_documento) || form.fecha_documento,
+        folio: limpiarDatoIa(resultado.folio) || form.folio,
+        numero_recibo: limpiarDatoIa(resultado.numero_recibo) || form.numero_recibo,
+        persona: limpiarDatoIa(resultado.persona) || form.persona,
+        concepto: limpiarDatoIa(resultado.concepto) || form.concepto,
+        categoria: limpiarDatoIa(resultado.categoria) || form.categoria,
+        rubro: limpiarDatoIa(resultado.rubro) || form.rubro,
+        subrubro: limpiarDatoIa(resultado.subrubro) || form.subrubro,
+        responsable: limpiarDatoIa(resultado.responsable) || form.responsable,
+        destino: limpiarDatoIa(resultado.destino) || form.destino,
+        tarea: limpiarDatoIa(resultado.tarea) || form.tarea,
+        monto_ingreso: resultado.monto_ingreso ?? form.monto_ingreso,
+        monto_egreso: resultado.monto_egreso ?? form.monto_egreso,
+        monto_rendido: resultado.monto_rendido ?? form.monto_rendido,
+        saldo_libro: resultado.saldo_libro ?? form.saldo_libro,
+        cantidad: resultado.cantidad ?? form.cantidad,
+        unidad: limpiarDatoIa(resultado.unidad) || form.unidad,
+        item: limpiarDatoIa(resultado.item) || form.item,
+        contraparte: limpiarDatoIa(resultado.contraparte) || form.contraparte,
+        interes_porcentaje: resultado.interes_porcentaje ?? form.interes_porcentaje,
+        saldo_a_favor: resultado.saldo_a_favor ?? form.saldo_a_favor,
+        saldo_en_contra: resultado.saldo_en_contra ?? form.saldo_en_contra,
+        texto_extraido: limpiarDatoIa(resultado.texto_extraido) || form.texto_extraido,
+        confianza: confianzaIaANumero(resultado.confianza, resultado.confianza_numerica) ?? form.confianza,
+        observaciones: [
+          limpiarDatoIa(resultado.observaciones),
+          confianzaTexto ? `Confianza IA: ${confianzaTexto}` : "",
+          Array.isArray(resultado.campos_dudosos) && resultado.campos_dudosos.length
+            ? `Campos dudosos: ${resultado.campos_dudosos.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" | ") || form.observaciones,
+      };
 
-      setMensaje({ texto: "Documento leido. Revisa los campos antes de guardar.", tipo: "exito" });
+      setForm(siguienteForm);
+      setRevisionDocumento({
+        original: siguienteForm,
+        camposDudosos: Array.isArray(resultado.campos_dudosos) ? resultado.campos_dudosos : [],
+        confianzaTexto,
+        revisado: false,
+        resultadoBruto: resultado,
+      });
+
+      setMensaje({ texto: "Documento leido. Corrige y confirma la revision antes de guardar.", tipo: "exito" });
     } catch (error) {
       setMensaje({ texto: `La IA no pudo leer el documento: ${error.message}`, tipo: "error" });
     } finally {
@@ -562,6 +634,14 @@ export default function ComisionRevisoraPage() {
 
     if (!gestionSeleccionada) {
       setMensaje({ texto: "Primero crea o selecciona una gestion.", tipo: "advertencia" });
+      return;
+    }
+
+    if (revisionDocumento && !revisionDocumento.revisado) {
+      setMensaje({
+        texto: "Primero confirma la revision de la lectura IA antes de guardar.",
+        tipo: "advertencia",
+      });
       return;
     }
 
@@ -626,6 +706,7 @@ export default function ComisionRevisoraPage() {
 
       setForm(FORM_INICIAL);
       setFoto(null);
+      setRevisionDocumento(null);
       await obtenerDocumentos(gestionSeleccionada);
       setMensaje({ texto: "Documento registrado para cruce y revision.", tipo: "exito" });
     } catch (error) {
@@ -1197,9 +1278,107 @@ export default function ComisionRevisoraPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setFoto(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    setFoto(e.target.files?.[0] || null);
+                    setRevisionDocumento(null);
+                  }}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 />
+
+                {revisionDocumento ? (
+                  <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold uppercase tracking-wide text-amber-900">
+                          Revision de lectura IA
+                        </h3>
+                        <p className="mt-1 text-sm text-amber-800">
+                          Corrige los campos del formulario. Cuando todo este conforme, confirma la revision para
+                          habilitar el guardado.
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${
+                          revisionDocumento.revisado
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-white text-amber-700"
+                        }`}
+                      >
+                        {revisionDocumento.revisado ? "Revision confirmada" : "Pendiente de confirmar"}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {CAMPOS_REVISION_DOCUMENTO.map((campo) => (
+                        <div key={campo.key} className="rounded-lg border border-amber-100 bg-white px-3 py-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {campo.label}
+                          </p>
+                          <p className="mt-1 break-words text-sm font-semibold text-slate-900">
+                            {String(form[campo.key] ?? "").trim() || "Sin dato"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {avisosRevisionDocumento.length ? (
+                      <div className="mt-4 rounded-lg border border-amber-300 bg-white px-3 py-2">
+                        <p className="text-sm font-bold text-amber-900">Cosas para revisar</p>
+                        <ul className="mt-2 space-y-1 text-sm text-amber-800">
+                          {avisosRevisionDocumento.map((aviso) => (
+                            <li key={aviso}>- {aviso}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="mt-4 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700">
+                        No hay alertas fuertes. Igual revisa la imagen original antes de confirmar.
+                      </p>
+                    )}
+
+                    {correccionesRevisionDocumento.length ? (
+                      <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <p className="text-sm font-bold text-slate-900">Correcciones hechas por ti</p>
+                        <div className="mt-2 space-y-2 text-sm text-slate-600">
+                          {correccionesRevisionDocumento.map((campo) => (
+                            <p key={campo.key}>
+                              <span className="font-semibold text-slate-800">{campo.label}:</span>{" "}
+                              {String(campo.original).trim() || "Sin dato"} {"->"}{" "}
+                              {String(campo.actual).trim() || "Sin dato"}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRevisionDocumento((actual) =>
+                            actual ? { ...actual, revisado: true } : actual
+                          )
+                        }
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                      >
+                        Confirmar revision
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRevisionDocumento(null);
+                          setMensaje({
+                            texto: "Lectura IA descartada. Puedes ajustar el formulario manualmente.",
+                            tipo: "info",
+                          });
+                        }}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Descartar lectura IA
+                      </button>
+                    </div>
+                  </section>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -1212,10 +1391,14 @@ export default function ComisionRevisoraPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={guardando}
+                    disabled={guardando || (revisionDocumento && !revisionDocumento.revisado)}
                     className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                   >
-                    {guardando ? "Guardando..." : "Guardar"}
+                    {guardando
+                      ? "Guardando..."
+                      : revisionDocumento && !revisionDocumento.revisado
+                        ? "Confirma revision"
+                        : "Guardar"}
                   </button>
                 </div>
               </div>
