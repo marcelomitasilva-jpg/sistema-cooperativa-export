@@ -73,10 +73,25 @@ const FORM_INICIAL = {
   detalle: "",
   monto: "",
   forma_pago: "efectivo",
+  modalidad_operacion: "contado",
+  contraparte_tipo: "ninguna",
+  socio_id: "",
+  distribuidor_id: "",
+  nuevo_distribuidor: "",
+  contraparte_nombre: "",
   responsable: "",
   acompanantes: "",
   beneficiario: "",
   comprador_oro: "",
+  moneda_origen: "BOB",
+  moneda_devolucion: "BOB",
+  monto_prestamo: "",
+  gramos_prestamo: "",
+  fecha_compromiso: "",
+  tiene_interes: false,
+  interes_detalle: "",
+  compromiso_venta_oro: false,
+  condiciones_prestamo: "",
   peso_oro_gramos: "",
   ley_oro: "",
   precio_gramo: "",
@@ -152,6 +167,16 @@ function resolverCuentas(form, cuentas) {
   return { debe: null, haber: null };
 }
 
+function requiereCondiciones(form) {
+  return [
+    "fiado_proveedor",
+    "prestamo_efectivo",
+    "prestamo_oro",
+    "compromiso_venta_oro",
+    "canje_oro",
+  ].includes(form.modalidad_operacion);
+}
+
 function colorEstado(estado) {
   if (estado === "contabilizado") return "bg-emerald-100 text-emerald-800";
   if (estado === "observado") return "bg-amber-100 text-amber-800";
@@ -164,6 +189,8 @@ export default function TesoreriaPage() {
   const [movimientos, setMovimientos] = useState([]);
   const [cuentas, setCuentas] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
+  const [socios, setSocios] = useState([]);
+  const [distribuidores, setDistribuidores] = useState([]);
   const [archivos, setArchivos] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [setupPendiente, setSetupPendiente] = useState(false);
@@ -174,10 +201,10 @@ export default function TesoreriaPage() {
     setCargando(true);
     setSetupPendiente(false);
 
-    const [movRes, cuentasRes, centrosRes] = await Promise.all([
+    const [movRes, cuentasRes, centrosRes, sociosRes, distribuidoresRes] = await Promise.all([
       supabase
         .from("tesoreria_movimientos")
-        .select("*, contabilidad_centros_costo(nombre,codigo), contabilidad_asientos(id,estado)")
+        .select("*")
         .order("fecha", { ascending: false })
         .order("id", { ascending: false })
         .limit(80),
@@ -190,6 +217,8 @@ export default function TesoreriaPage() {
         .select("id,codigo,nombre,activo")
         .eq("activo", true)
         .order("codigo", { ascending: true }),
+      supabase.from("personal_socios").select("id,nombre").order("nombre", { ascending: true }),
+      supabase.from("distribuidores").select("id,nombre").order("nombre", { ascending: true }),
     ]);
 
     if (movRes.error) {
@@ -201,6 +230,8 @@ export default function TesoreriaPage() {
 
     if (!cuentasRes.error) setCuentas(cuentasRes.data || []);
     if (!centrosRes.error) setCentrosCosto(centrosRes.data || []);
+    if (!sociosRes.error) setSocios(sociosRes.data || []);
+    if (!distribuidoresRes.error) setDistribuidores(distribuidoresRes.data || []);
     setCargando(false);
   };
 
@@ -211,6 +242,12 @@ export default function TesoreriaPage() {
   const tipoActual = TIPOS[form.tipo_movimiento];
   const cuentasSugeridas = useMemo(() => resolverCuentas(form, cuentas), [form, cuentas]);
   const montoNetoVenta = Math.max(numero(form.monto) - numero(form.deducciones), 0);
+  const sociosPorId = useMemo(() => new Map(socios.map((socio) => [String(socio.id), socio])), [socios]);
+  const distribuidoresPorId = useMemo(
+    () => new Map(distribuidores.map((distribuidor) => [String(distribuidor.id), distribuidor])),
+    [distribuidores]
+  );
+  const centrosPorId = useMemo(() => new Map(centrosCosto.map((centro) => [String(centro.id), centro])), [centrosCosto]);
 
   const resumen = useMemo(() => {
     return movimientos.reduce(
@@ -237,7 +274,30 @@ export default function TesoreriaPage() {
       ...actual,
       tipo_movimiento: tipo,
       categoria: tipo === "venta_oro" ? "oro" : tipo === "ingreso" ? "aportes" : actual.categoria,
+      modalidad_operacion: tipo === "prestamo_recibido" ? "prestamo_efectivo" : tipo === "venta_oro" ? "contado" : actual.modalidad_operacion,
+      contraparte_tipo: tipo === "prestamo_recibido" ? "socio" : actual.contraparte_tipo,
     }));
+  };
+
+  const crearDistribuidorSiHaceFalta = async () => {
+    if (form.contraparte_tipo !== "distribuidor") return form.distribuidor_id || "";
+    if (form.distribuidor_id) return form.distribuidor_id;
+    const nombre = form.nuevo_distribuidor.trim();
+    if (!nombre) return "";
+
+    const { data, error } = await supabase
+      .from("distribuidores")
+      .insert([{ nombre }])
+      .select("id,nombre")
+      .single();
+
+    if (error) {
+      setMensaje(`No se pudo registrar el distribuidor: ${error.message}`);
+      return "";
+    }
+
+    setDistribuidores((actual) => [...actual, data].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    return data.id;
   };
 
   const subirRespaldos = async (movimientoId) => {
@@ -288,8 +348,18 @@ export default function TesoreriaPage() {
       setMensaje("Completa el detalle y un monto mayor a cero.");
       return;
     }
+    if (requiereCondiciones(form) && !form.condiciones_prestamo.trim()) {
+      setMensaje("Anota las condiciones del prestamo, fiado o compromiso. Esto evita problemas despues.");
+      return;
+    }
 
     setGuardando(true);
+    const distribuidorId = await crearDistribuidorSiHaceFalta();
+    if (form.contraparte_tipo === "distribuidor" && form.nuevo_distribuidor.trim() && !distribuidorId) {
+      setGuardando(false);
+      return;
+    }
+
     const debe = cuentasSugeridas.debe;
     const haber = cuentasSugeridas.haber;
     const estadoInicial = debe?.id_cuenta && haber?.id_cuenta ? "registrado" : "observado";
@@ -304,10 +374,24 @@ export default function TesoreriaPage() {
       detalle: form.detalle.trim(),
       monto: form.tipo_movimiento === "venta_oro" ? montoNetoVenta : numero(form.monto),
       forma_pago: form.forma_pago,
+      modalidad_operacion: form.modalidad_operacion,
+      contraparte_tipo: form.contraparte_tipo,
+      socio_id: form.contraparte_tipo === "socio" && form.socio_id ? Number(form.socio_id) : null,
+      distribuidor_id: form.contraparte_tipo === "distribuidor" && distribuidorId ? Number(distribuidorId) : null,
+      contraparte_nombre: form.contraparte_nombre || form.nuevo_distribuidor || null,
       responsable: form.responsable || null,
       acompanantes: form.acompanantes || null,
       beneficiario: form.beneficiario || null,
       comprador_oro: form.comprador_oro || null,
+      moneda_origen: form.moneda_origen,
+      moneda_devolucion: form.moneda_devolucion,
+      monto_prestamo: form.monto_prestamo ? numero(form.monto_prestamo) : null,
+      gramos_prestamo: form.gramos_prestamo ? numero(form.gramos_prestamo) : null,
+      fecha_compromiso: form.fecha_compromiso || null,
+      tiene_interes: Boolean(form.tiene_interes),
+      interes_detalle: form.interes_detalle || null,
+      compromiso_venta_oro: Boolean(form.compromiso_venta_oro),
+      condiciones_prestamo: form.condiciones_prestamo || null,
       peso_oro_gramos: form.peso_oro_gramos ? numero(form.peso_oro_gramos) : null,
       ley_oro: form.ley_oro || null,
       precio_gramo: form.precio_gramo ? numero(form.precio_gramo) : null,
@@ -322,11 +406,40 @@ export default function TesoreriaPage() {
       creado_por: form.creado_por || null,
     };
 
-    const { data: movimiento, error } = await supabase
+    const insertarMovimiento = async (datos) => supabase
       .from("tesoreria_movimientos")
-      .insert([payload])
+      .insert([datos])
       .select("id")
       .single();
+
+    let { data: movimiento, error } = await insertarMovimiento(payload);
+
+    if (error && /schema cache|column|Could not find/i.test(`${error.message || ""} ${error.details || ""}`)) {
+      const {
+        modalidad_operacion,
+        contraparte_tipo,
+        socio_id,
+        distribuidor_id,
+        contraparte_nombre,
+        moneda_origen,
+        moneda_devolucion,
+        monto_prestamo,
+        gramos_prestamo,
+        fecha_compromiso,
+        tiene_interes,
+        interes_detalle,
+        compromiso_venta_oro,
+        condiciones_prestamo,
+        ...payloadBasico
+      } = payload;
+      ({ data: movimiento, error } = await insertarMovimiento({
+        ...payloadBasico,
+        observaciones: [
+          payload.observaciones,
+          `Condiciones no guardadas por falta de SQL actualizado: modalidad ${modalidad_operacion}, contraparte ${contraparte_tipo}, socio ${socio_id || ""}, distribuidor ${distribuidor_id || ""}, nombre ${contraparte_nombre || ""}, origen ${moneda_origen}, devolucion ${moneda_devolucion}, monto prestamo ${monto_prestamo || ""}, gramos ${gramos_prestamo || ""}, fecha compromiso ${fecha_compromiso || ""}, interes ${tiene_interes ? interes_detalle || "si" : "no"}, compromiso oro ${compromiso_venta_oro ? "si" : "no"}, condiciones ${condiciones_prestamo || ""}`,
+        ].filter(Boolean).join(" | "),
+      }));
+    }
 
     if (error) {
       setMensaje(`No se pudo guardar tesoreria: ${error.message}`);
@@ -495,6 +608,149 @@ export default function TesoreriaPage() {
                   </div>
                 </div>
 
+                <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
+                  <p className="font-black text-sky-950">Forma real de la operacion</p>
+                  <p className="mt-1 text-xs font-semibold text-sky-900">
+                    Use esto cuando la compra no fue simple: prestamo, fiado, oro por devolver o compromiso de venta.
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="field-label">Modalidad</label>
+                      <select
+                        value={form.modalidad_operacion}
+                        onChange={(e) => actualizar("modalidad_operacion", e.target.value)}
+                        className="w-full border px-3 py-2"
+                      >
+                        <option value="contado">Contado normal</option>
+                        <option value="fiado_proveedor">Fiado de proveedor/almacen</option>
+                        <option value="prestamo_efectivo">Prestamo en bolivianos</option>
+                        <option value="prestamo_oro">Prestamo en oro</option>
+                        <option value="compromiso_venta_oro">Prestamo con compromiso de vender oro</option>
+                        <option value="canje_oro">Canje o devolucion con oro</option>
+                        <option value="otro">Otra forma</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label">Quien es la contraparte</label>
+                      <select
+                        value={form.contraparte_tipo}
+                        onChange={(e) => actualizar("contraparte_tipo", e.target.value)}
+                        className="w-full border px-3 py-2"
+                      >
+                        <option value="ninguna">No aplica</option>
+                        <option value="socio">Socio de la cooperativa</option>
+                        <option value="distribuidor">Distribuidor / almacen proveedor</option>
+                        <option value="cooperativa">Otra cooperativa</option>
+                        <option value="persona_externa">Persona externa</option>
+                        <option value="empresa">Empresa</option>
+                      </select>
+                    </div>
+
+                    {form.contraparte_tipo === "socio" ? (
+                      <div className="sm:col-span-2">
+                        <label className="field-label">Socio</label>
+                        <select value={form.socio_id} onChange={(e) => actualizar("socio_id", e.target.value)} className="w-full border px-3 py-2">
+                          <option value="">Elegir socio</option>
+                          {socios.map((socio) => (
+                            <option key={socio.id} value={socio.id}>{socio.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
+
+                    {form.contraparte_tipo === "distribuidor" ? (
+                      <>
+                        <div>
+                          <label className="field-label">Distribuidor registrado</label>
+                          <select value={form.distribuidor_id} onChange={(e) => actualizar("distribuidor_id", e.target.value)} className="w-full border px-3 py-2">
+                            <option value="">Elegir o registrar nuevo</option>
+                            {distribuidores.map((distribuidor) => (
+                              <option key={distribuidor.id} value={distribuidor.id}>{distribuidor.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="field-label">Nuevo proveedor</label>
+                          <input
+                            value={form.nuevo_distribuidor}
+                            onChange={(e) => actualizar("nuevo_distribuidor", e.target.value)}
+                            placeholder="Ej. Almacen San Jose"
+                            className="w-full border px-3 py-2"
+                          />
+                        </div>
+                      </>
+                    ) : null}
+
+                    {["cooperativa", "persona_externa", "empresa"].includes(form.contraparte_tipo) ? (
+                      <div className="sm:col-span-2">
+                        <label className="field-label">Nombre de la contraparte</label>
+                        <input
+                          value={form.contraparte_nombre}
+                          onChange={(e) => actualizar("contraparte_nombre", e.target.value)}
+                          placeholder="Nombre de cooperativa, persona o empresa"
+                          className="w-full border px-3 py-2"
+                        />
+                      </div>
+                    ) : null}
+
+                    {requiereCondiciones(form) ? (
+                      <>
+                        <div>
+                          <label className="field-label">Nos presto en</label>
+                          <select value={form.moneda_origen} onChange={(e) => actualizar("moneda_origen", e.target.value)} className="w-full border px-3 py-2">
+                            <option value="BOB">Bolivianos</option>
+                            <option value="ORO">Oro</option>
+                            <option value="MIXTO">Mixto</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="field-label">Devolveremos en</label>
+                          <select value={form.moneda_devolucion} onChange={(e) => actualizar("moneda_devolucion", e.target.value)} className="w-full border px-3 py-2">
+                            <option value="BOB">Bolivianos</option>
+                            <option value="ORO">Oro</option>
+                            <option value="MIXTO">Mixto</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="field-label">Monto prestado Bs</label>
+                          <input type="number" step="0.01" value={form.monto_prestamo} onChange={(e) => actualizar("monto_prestamo", e.target.value)} className="w-full border px-3 py-2" />
+                        </div>
+                        <div>
+                          <label className="field-label">Gramos de oro</label>
+                          <input type="number" step="0.0001" value={form.gramos_prestamo} onChange={(e) => actualizar("gramos_prestamo", e.target.value)} className="w-full border px-3 py-2" />
+                        </div>
+                        <div>
+                          <label className="field-label">Fecha compromiso</label>
+                          <input type="date" value={form.fecha_compromiso} onChange={(e) => actualizar("fecha_compromiso", e.target.value)} className="w-full border px-3 py-2" />
+                        </div>
+                        <label className="flex items-center gap-3 rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                          <input type="checkbox" checked={form.tiene_interes} onChange={(e) => actualizar("tiene_interes", e.target.checked)} />
+                          Tiene interes
+                        </label>
+                        {form.tiene_interes ? (
+                          <div className="sm:col-span-2">
+                            <label className="field-label">Detalle del interes</label>
+                            <input value={form.interes_detalle} onChange={(e) => actualizar("interes_detalle", e.target.value)} placeholder="Ej. 2% mensual, Bs 500, sin interes" className="w-full border px-3 py-2" />
+                          </div>
+                        ) : null}
+                        <label className="flex items-center gap-3 rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 sm:col-span-2">
+                          <input type="checkbox" checked={form.compromiso_venta_oro} onChange={(e) => actualizar("compromiso_venta_oro", e.target.checked)} />
+                          Hay compromiso de vender oro a esta persona/proveedor
+                        </label>
+                        <div className="sm:col-span-2">
+                          <label className="field-label">Condiciones claras</label>
+                          <textarea
+                            value={form.condiciones_prestamo}
+                            onChange={(e) => actualizar("condiciones_prestamo", e.target.value)}
+                            placeholder="Ej. Almacen presto diesel por Bs 12.000, se paga en 15 dias o con venta de oro de la siguiente alza."
+                            className="min-h-24 w-full border px-3 py-2"
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="field-label">Nro. recibo</label>
@@ -519,13 +775,31 @@ export default function TesoreriaPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="field-label">Responsable</label>
-                    <input value={form.responsable} onChange={(e) => actualizar("responsable", e.target.value)} placeholder="Tesorero o socio" className="w-full border px-3 py-2" />
+                    <input
+                      list="tesoreria-socios-lista"
+                      value={form.responsable}
+                      onChange={(e) => actualizar("responsable", e.target.value)}
+                      placeholder="Tesorero o socio"
+                      className="w-full border px-3 py-2"
+                    />
                   </div>
                   <div>
                     <label className="field-label">Beneficiario</label>
-                    <input value={form.beneficiario} onChange={(e) => actualizar("beneficiario", e.target.value)} placeholder="A quien se pago/entrego" className="w-full border px-3 py-2" />
+                    <input
+                      list="tesoreria-socios-lista"
+                      value={form.beneficiario}
+                      onChange={(e) => actualizar("beneficiario", e.target.value)}
+                      placeholder="A quien se pago/entrego"
+                      className="w-full border px-3 py-2"
+                    />
                   </div>
                 </div>
+
+                <datalist id="tesoreria-socios-lista">
+                  {socios.map((socio) => (
+                    <option key={socio.id} value={socio.nombre} />
+                  ))}
+                </datalist>
 
                 {form.tipo_movimiento === "venta_oro" ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -577,12 +851,14 @@ export default function TesoreriaPage() {
               </div>
 
               <div className="mt-5 overflow-x-auto">
-                <table className="min-w-[900px] text-sm">
+                <table className="min-w-[1120px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
                       <th className="px-3 py-3">Fecha</th>
                       <th className="px-3 py-3">Tipo</th>
                       <th className="px-3 py-3">Detalle</th>
+                      <th className="px-3 py-3">Modalidad</th>
+                      <th className="px-3 py-3">Contraparte</th>
                       <th className="px-3 py-3">Recibo/Folio</th>
                       <th className="px-3 py-3 text-right">Monto</th>
                       <th className="px-3 py-3">Estado</th>
@@ -596,8 +872,23 @@ export default function TesoreriaPage() {
                         <td className="px-3 py-3">
                           <p className="font-semibold text-slate-800">{item.detalle}</p>
                           <p className="text-xs font-semibold text-slate-500">
-                            {item.contabilidad_centros_costo?.nombre || "General"} {item.beneficiario ? `| ${item.beneficiario}` : ""}
+                            {centrosPorId.get(String(item.centro_costo_id))?.nombre || "General"} {item.beneficiario ? `| ${item.beneficiario}` : ""}
                           </p>
+                        </td>
+                        <td className="px-3 py-3 text-slate-700">
+                          <p className="font-black">{item.modalidad_operacion || "contado"}</p>
+                          {item.fecha_compromiso ? <p className="text-xs font-semibold text-amber-700">Vence: {item.fecha_compromiso}</p> : null}
+                          {item.compromiso_venta_oro ? <p className="text-xs font-semibold text-amber-700">Compromiso oro</p> : null}
+                        </td>
+                        <td className="px-3 py-3 text-slate-700">
+                          <p className="font-semibold">
+                            {sociosPorId.get(String(item.socio_id))?.nombre ||
+                              distribuidoresPorId.get(String(item.distribuidor_id))?.nombre ||
+                              item.contraparte_nombre ||
+                              item.beneficiario ||
+                              "-"}
+                          </p>
+                          {item.tiene_interes ? <p className="text-xs font-semibold text-red-700">Con interes</p> : null}
                         </td>
                         <td className="px-3 py-3 text-slate-700">
                           {item.numero_recibo || "s/n"} / {item.folio || "s/f"}
