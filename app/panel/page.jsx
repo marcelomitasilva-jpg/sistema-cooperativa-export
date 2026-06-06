@@ -16,6 +16,13 @@ const modulosPrincipales = [
     tono: "bg-emerald-800 text-white",
   },
   {
+    titulo: "Cuentas",
+    descripcion: "Buscar rapido deudas, pagos pendientes y saldos por rendir.",
+    href: "/cuentas",
+    accion: "Ver saldos",
+    tono: "bg-amber-800 text-white",
+  },
+  {
     titulo: "Rendir gasto",
     descripcion: "Subir recibo, leer con IA y mandar para aprobacion.",
     href: "/rendicion",
@@ -115,7 +122,7 @@ export default function PanelPage() {
             ) : null}
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-5">
+          <section className="grid gap-4 lg:grid-cols-3 xl:grid-cols-6">
             {modulosPrincipales.map((modulo) => (
               <Link key={modulo.href} href={modulo.href} className="module-card p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
                 <h2 className="text-xl font-black text-slate-950">{modulo.titulo}</h2>

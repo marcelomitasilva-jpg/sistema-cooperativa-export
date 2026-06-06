@@ -11,6 +11,7 @@ const grupos = [
     enlaces: [
       { href: "/panel", label: "Inicio" },
       { href: "/tesoreria", label: "Tesoreria" },
+      { href: "/cuentas", label: "Cuentas" },
       { href: "/rendicion", label: "Rendir gasto" },
       { href: "/almacen", label: "Almacen" },
       { href: "/puntas", label: "Puntas" },
