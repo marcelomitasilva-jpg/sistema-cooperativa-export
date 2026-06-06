@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import NavPrincipal from '@/components/NavPrincipal';
 import { registrarAsientoContable } from '@/lib/asientos-contables';
@@ -42,7 +42,7 @@ export default function LiquidacionesPage() {
     try {
       const { data, error } = await supabase
         .from('comercializacion_oro')
-        .select('*, personal_socios(nombre)')
+        .select('*')
         .order('fecha', { ascending: false });
       if (error) throw error;
       setLiquidaciones(data || []);
@@ -142,7 +142,15 @@ export default function LiquidacionesPage() {
   };
 
   const handleEdit = (liq) => {
-    setFormData(liq);
+    setFormData({
+      socio_id: liq.socio_id ? String(liq.socio_id) : '',
+      peso_bruto: liq.peso_bruto ?? '',
+      ley_oro: liq.ley_oro ?? '',
+      humedad: liq.humedad ?? '',
+      deducciones: liq.deducciones ?? '',
+      valor_final: liq.valor_final ?? 0,
+      fecha: liq.fecha ? String(liq.fecha).slice(0, 10) : new Date().toISOString().split('T')[0],
+    });
     setEditingId(liq.id);
   };
 
@@ -167,6 +175,8 @@ export default function LiquidacionesPage() {
     : liquidaciones;
 
   const totalPagado = liquidacionesFiltradas.reduce((sum, l) => sum + (l.valor_final || 0), 0);
+  const sociosPorId = useMemo(() => new Map(socios.map((socio) => [String(socio.id), socio])), [socios]);
+  const nombreSocio = (socioId) => sociosPorId.get(String(socioId))?.nombre || `Socio #${socioId || 's/n'}`;
 
   return (
     <>
@@ -358,11 +368,11 @@ export default function LiquidacionesPage() {
                   ) : (
                     liquidacionesFiltradas.map((liq) => (
                       <tr key={liq.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="px-6 py-4 font-semibold text-gray-900">{liq.personal_socios?.nombre}</td>
-                        <td className="px-6 py-4 text-gray-700">{new Date(liq.fecha).toLocaleDateString()}</td>
-                        <td className="px-6 py-4 text-right text-gray-700">{parseFloat(liq.peso_bruto).toFixed(2)} g</td>
-                        <td className="px-6 py-4 text-right text-gray-700">{parseFloat(liq.ley_oro).toFixed(2)}%</td>
-                        <td className="px-6 py-4 text-right font-bold text-green-600">{parseFloat(liq.valor_final).toFixed(2)} Bs.</td>
+                        <td className="px-6 py-4 font-semibold text-gray-900">{nombreSocio(liq.socio_id)}</td>
+                        <td className="px-6 py-4 text-gray-700">{liq.fecha ? new Date(liq.fecha).toLocaleDateString() : '-'}</td>
+                        <td className="px-6 py-4 text-right text-gray-700">{Number(liq.peso_bruto || 0).toFixed(2)} g</td>
+                        <td className="px-6 py-4 text-right text-gray-700">{Number(liq.ley_oro || 0).toFixed(2)}%</td>
+                        <td className="px-6 py-4 text-right font-bold text-green-600">{Number(liq.valor_final || 0).toFixed(2)} Bs.</td>
                         <td className="px-6 py-4 text-center">
                           <button
                             onClick={() => handleEdit(liq)}
