@@ -35,6 +35,32 @@ update public.plan_cuentas
 set activa = case when estado = 'Activa' then true else false end
 where estado is not null;
 
+update public.plan_cuentas hija
+set cuenta_padre_id = padre.id_cuenta
+from public.plan_cuentas padre
+where hija.cuenta_padre_id is null
+  and position('.' in hija.codigo_cuenta) > 0
+  and padre.codigo_cuenta = regexp_replace(hija.codigo_cuenta, '\.[^.]+$', '')
+  and coalesce(padre.cooperativa_id, 0) = coalesce(hija.cooperativa_id, 0);
+
+update public.plan_cuentas padre
+set permite_movimiento = false
+where exists (
+  select 1
+  from public.plan_cuentas hija
+  where hija.cuenta_padre_id = padre.id_cuenta
+    and coalesce(hija.activa, true) = true
+);
+
+update public.plan_cuentas cuenta
+set permite_movimiento = true
+where not exists (
+  select 1
+  from public.plan_cuentas hija
+  where hija.cuenta_padre_id = cuenta.id_cuenta
+    and coalesce(hija.activa, true) = true
+);
+
 create table if not exists public.contabilidad_centros_costo (
   id bigserial primary key,
   cooperativa_id bigint references public.cooperativas(id),
