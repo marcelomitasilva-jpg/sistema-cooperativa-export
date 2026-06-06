@@ -155,6 +155,66 @@ function referenciaAlternativa(doc) {
     .join(" / ");
 }
 
+function montoPrincipal(doc) {
+  return numero(doc.monto_egreso) || numero(doc.monto_ingreso) || numero(doc.monto_rendido);
+}
+
+function montosIguales(a, b) {
+  return Math.abs(montoPrincipal(a) - montoPrincipal(b)) < 0.01;
+}
+
+function descripcionCoincidencia(doc) {
+  return [
+    doc.fecha_documento || "s/f",
+    `Rec. ${doc.numero_recibo || "s/n"}`,
+    `Folio ${doc.folio || "s/f"}`,
+    moneda(montoPrincipal(doc)),
+    doc.concepto || "Sin detalle",
+  ].join(" | ");
+}
+
+function encontrarCoincidenciasDocumento(nuevo, documentos) {
+  const recibo = normalizarTexto(nuevo.numero_recibo);
+  const folio = normalizarTexto(nuevo.folio);
+  const fecha = nuevo.fecha_documento || "";
+  const concepto = normalizarTexto(nuevo.concepto);
+
+  return documentos
+    .map((doc) => {
+      let puntaje = 0;
+      const motivos = [];
+      const docRecibo = normalizarTexto(doc.numero_recibo);
+      const docFolio = normalizarTexto(doc.folio);
+      const docConcepto = normalizarTexto(doc.concepto);
+
+      if (fecha && doc.fecha_documento === fecha) {
+        puntaje += 2;
+        motivos.push("misma fecha");
+      }
+      if (recibo && docRecibo === recibo) {
+        puntaje += 4;
+        motivos.push("mismo recibo");
+      }
+      if (folio && docFolio === folio) {
+        puntaje += 3;
+        motivos.push("mismo folio");
+      }
+      if (montosIguales(nuevo, doc) && montoPrincipal(nuevo) > 0) {
+        puntaje += 3;
+        motivos.push("mismo monto");
+      }
+      if (concepto && docConcepto && (docConcepto.includes(concepto) || concepto.includes(docConcepto))) {
+        puntaje += 2;
+        motivos.push("detalle parecido");
+      }
+
+      return { doc, puntaje, motivos };
+    })
+    .filter((item) => item.puntaje >= 7)
+    .sort((a, b) => b.puntaje - a.puntaje)
+    .slice(0, 5);
+}
+
 function descargarCsv(nombreArchivo, filas) {
   const encabezados = [
     "Tipo",
@@ -378,7 +438,9 @@ export default function ComisionRevisoraPage() {
   const [respaldos, setRespaldos] = useState([]);
   const [form, setForm] = useState(FORM_INICIAL);
   const [revisionDocumento, setRevisionDocumento] = useState(null);
+  const [permitirDuplicadoDocumento, setPermitirDuplicadoDocumento] = useState(false);
   const [filasExtraidas, setFilasExtraidas] = useState([]);
+  const [guardarDuplicadosTabla, setGuardarDuplicadosTabla] = useState(false);
   const [fotosTabla, setFotosTabla] = useState([]);
   const [tipoFuenteTabla, setTipoFuenteTabla] = useState("cuaderno_egresos_revisora");
   const [respaldoForm, setRespaldoForm] = useState(RESPALDO_INICIAL);
@@ -517,6 +579,30 @@ export default function ComisionRevisoraPage() {
     }));
   }, [form, revisionDocumento]);
 
+  const coincidenciasDocumentoActual = useMemo(
+    () => (revisionDocumento ? encontrarCoincidenciasDocumento(form, documentos) : []),
+    [documentos, form, revisionDocumento]
+  );
+
+  const filasConDuplicados = useMemo(
+    () =>
+      filasExtraidas.map((fila) => ({
+        ...fila,
+        coincidencias: encontrarCoincidenciasDocumento(fila, documentos),
+      })),
+    [documentos, filasExtraidas]
+  );
+
+  const filasDuplicadas = useMemo(
+    () => filasConDuplicados.filter((fila) => fila.coincidencias.length),
+    [filasConDuplicados]
+  );
+
+  const filasNuevas = useMemo(
+    () => filasConDuplicados.filter((fila) => !fila.coincidencias.length),
+    [filasConDuplicados]
+  );
+
   const archivoABase64 = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -618,8 +704,10 @@ export default function ComisionRevisoraPage() {
         camposDudosos: Array.isArray(resultado.campos_dudosos) ? resultado.campos_dudosos : [],
         confianzaTexto,
         revisado: false,
+        coincidencias: encontrarCoincidenciasDocumento(siguienteForm, documentos),
         resultadoBruto: resultado,
       });
+      setPermitirDuplicadoDocumento(false);
 
       setMensaje({ texto: "Documento leido. Corrige y confirma la revision antes de guardar.", tipo: "exito" });
     } catch (error) {
@@ -640,6 +728,14 @@ export default function ComisionRevisoraPage() {
     if (revisionDocumento && !revisionDocumento.revisado) {
       setMensaje({
         texto: "Primero confirma la revision de la lectura IA antes de guardar.",
+        tipo: "advertencia",
+      });
+      return;
+    }
+
+    if (coincidenciasDocumentoActual.length && !permitirDuplicadoDocumento) {
+      setMensaje({
+        texto: "Este documento parece ya cargado. Revisa las coincidencias o marca guardar como duplicado justificado.",
         tipo: "advertencia",
       });
       return;
@@ -707,6 +803,7 @@ export default function ComisionRevisoraPage() {
       setForm(FORM_INICIAL);
       setFoto(null);
       setRevisionDocumento(null);
+      setPermitirDuplicadoDocumento(false);
       await obtenerDocumentos(gestionSeleccionada);
       setMensaje({ texto: "Documento registrado para cruce y revision.", tipo: "exito" });
     } catch (error) {
@@ -771,6 +868,7 @@ export default function ComisionRevisoraPage() {
           confianza: confianzaIaANumero(fila.confianza, fila.confianza_numerica) ?? "",
         }))
       );
+      setGuardarDuplicadosTabla(false);
 
       setMensaje({ texto: "Filas extraidas. Revisa la tabla antes de guardar.", tipo: "exito" });
     } catch (error) {
@@ -796,6 +894,15 @@ export default function ComisionRevisoraPage() {
       return;
     }
 
+    const filasParaGuardar = guardarDuplicadosTabla ? filasConDuplicados : filasNuevas;
+    if (!filasParaGuardar.length) {
+      setMensaje({
+        texto: "Todas las filas parecen ya cargadas. Puedes volver a analizar, descartar o activar guardar repetidas si corresponde.",
+        tipo: "advertencia",
+      });
+      return;
+    }
+
     setGuardando(true);
     try {
       const { data: lote, error: loteError } = await supabase
@@ -804,7 +911,9 @@ export default function ComisionRevisoraPage() {
           {
             gestion_id: gestionSeleccionada,
             tipo_fuente: tipoFuenteTabla,
-            descripcion: "Carga desde tabla manuscrita revisada",
+            descripcion: guardarDuplicadosTabla
+              ? "Carga desde tabla manuscrita revisada con repetidos autorizados"
+              : "Carga desde tabla manuscrita revisada; repetidos omitidos",
             cantidad_imagenes: fotosTabla.length,
           },
         ])
@@ -812,7 +921,7 @@ export default function ComisionRevisoraPage() {
         .single();
       if (loteError) throw loteError;
 
-      const payload = filasExtraidas.map((fila) => ({
+      const payload = filasParaGuardar.map((fila) => ({
         gestion_id: gestionSeleccionada,
         lote_carga_id: lote.id,
         tipo_documento: fila.tipo_documento || tipoFuenteTabla,
@@ -831,7 +940,14 @@ export default function ComisionRevisoraPage() {
         monto_ingreso: numero(fila.monto_ingreso),
         monto_egreso: numero(fila.monto_egreso),
         confianza: opcionalNumero(fila.confianza),
-        observaciones: fila.observaciones || null,
+        observaciones: [
+          fila.observaciones,
+          guardarDuplicadosTabla && fila.coincidencias?.length
+            ? "Guardado como repetido justificado por usuario."
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" | ") || null,
       }));
 
       const { error } = await supabase.from("comision_documentos").insert(payload);
@@ -839,8 +955,14 @@ export default function ComisionRevisoraPage() {
 
       setFilasExtraidas([]);
       setFotosTabla([]);
+      setGuardarDuplicadosTabla(false);
       await obtenerDocumentos(gestionSeleccionada);
-      setMensaje({ texto: "Filas manuscritas guardadas como movimientos revisables.", tipo: "exito" });
+      setMensaje({
+        texto: guardarDuplicadosTabla
+          ? "Filas guardadas, incluyendo repetidas autorizadas."
+          : `Filas nuevas guardadas. Repetidas omitidas: ${filasDuplicadas.length}.`,
+        tipo: "exito",
+      });
     } catch (error) {
       setMensaje({ texto: `No se pudieron guardar las filas: ${error.message}`, tipo: "error" });
     } finally {
@@ -1281,6 +1403,7 @@ export default function ComisionRevisoraPage() {
                   onChange={(e) => {
                     setFoto(e.target.files?.[0] || null);
                     setRevisionDocumento(null);
+                    setPermitirDuplicadoDocumento(false);
                   }}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 />
@@ -1336,6 +1459,27 @@ export default function ComisionRevisoraPage() {
                       </p>
                     )}
 
+                    {coincidenciasDocumentoActual.length ? (
+                      <div className="mt-4 rounded-lg border border-red-200 bg-white px-3 py-3">
+                        <p className="text-sm font-bold text-red-800">Parece que este documento ya fue cargado</p>
+                        <div className="mt-2 space-y-2 text-sm text-red-700">
+                          {coincidenciasDocumentoActual.map((item) => (
+                            <p key={item.doc.id}>
+                              {descripcionCoincidencia(item.doc)}. Coincide por: {item.motivos.join(", ")}.
+                            </p>
+                          ))}
+                        </div>
+                        <label className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">
+                          <input
+                            type="checkbox"
+                            checked={permitirDuplicadoDocumento}
+                            onChange={(e) => setPermitirDuplicadoDocumento(e.target.checked)}
+                          />
+                          Guardar como duplicado justificado
+                        </label>
+                      </div>
+                    ) : null}
+
                     {correccionesRevisionDocumento.length ? (
                       <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-2">
                         <p className="text-sm font-bold text-slate-900">Correcciones hechas por ti</p>
@@ -1367,6 +1511,7 @@ export default function ComisionRevisoraPage() {
                         type="button"
                         onClick={() => {
                           setRevisionDocumento(null);
+                          setPermitirDuplicadoDocumento(false);
                           setMensaje({
                             texto: "Lectura IA descartada. Puedes ajustar el formulario manualmente.",
                             tipo: "info",
@@ -1391,13 +1536,19 @@ export default function ComisionRevisoraPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={guardando || (revisionDocumento && !revisionDocumento.revisado)}
+                    disabled={
+                      guardando ||
+                      (revisionDocumento && !revisionDocumento.revisado) ||
+                      (coincidenciasDocumentoActual.length > 0 && !permitirDuplicadoDocumento)
+                    }
                     className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                   >
                     {guardando
                       ? "Guardando..."
                       : revisionDocumento && !revisionDocumento.revisado
                         ? "Confirma revision"
+                        : coincidenciasDocumentoActual.length > 0 && !permitirDuplicadoDocumento
+                          ? "Autoriza duplicado"
                         : "Guardar"}
                   </button>
                 </div>
@@ -1414,6 +1565,9 @@ export default function ComisionRevisoraPage() {
                     <p className="text-sm text-slate-500">
                       Corrige las filas extraidas por IA y luego guardalas en la gestion.
                     </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      Nuevas: {filasNuevas.length} | Posibles repetidas: {filasDuplicadas.length}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -1421,9 +1575,29 @@ export default function ComisionRevisoraPage() {
                     disabled={guardando}
                     className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                   >
-                    Guardar {filasExtraidas.length} filas
+                    {guardarDuplicadosTabla
+                      ? `Guardar ${filasConDuplicados.length} filas`
+                      : `Guardar ${filasNuevas.length} nuevas`}
                   </button>
                 </div>
+                {filasDuplicadas.length ? (
+                  <div className="border-b border-amber-100 bg-amber-50 px-5 py-4">
+                    <p className="text-sm font-bold text-amber-900">
+                      El sistema encontro filas que parecen ya cargadas.
+                    </p>
+                    <p className="mt-1 text-sm text-amber-800">
+                      Para evitar doble trabajo, por defecto se guardaran solo las filas nuevas.
+                    </p>
+                    <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-amber-900">
+                      <input
+                        type="checkbox"
+                        checked={guardarDuplicadosTabla}
+                        onChange={(e) => setGuardarDuplicadosTabla(e.target.checked)}
+                      />
+                      Guardar tambien las filas repetidas
+                    </label>
+                  </div>
+                ) : null}
                 <div className="overflow-x-auto">
                   <table className="min-w-[1100px] divide-y divide-slate-200 text-sm">
                     <thead className="bg-indigo-50 text-left text-xs uppercase tracking-wide text-indigo-700">
@@ -1439,8 +1613,11 @@ export default function ComisionRevisoraPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filasExtraidas.map((fila) => (
-                        <tr key={fila.id_temporal}>
+                      {filasConDuplicados.map((fila) => (
+                        <tr
+                          key={fila.id_temporal}
+                          className={fila.coincidencias.length ? "bg-red-50/70" : ""}
+                        >
                           <td className="px-3 py-2">
                             <input
                               type="date"
@@ -1452,6 +1629,11 @@ export default function ComisionRevisoraPage() {
                             />
                           </td>
                           <td className="px-3 py-2">
+                            {fila.coincidencias.length ? (
+                              <p className="mb-1 rounded bg-red-100 px-2 py-1 text-xs font-bold text-red-700">
+                                Ya cargado
+                              </p>
+                            ) : null}
                             <input
                               value={fila.concepto}
                               onChange={(e) =>
@@ -1522,6 +1704,11 @@ export default function ComisionRevisoraPage() {
                               }
                               className="w-64 rounded border border-slate-300 px-2 py-1"
                             />
+                            {fila.coincidencias.length ? (
+                              <p className="mt-1 text-xs text-red-700">
+                                Coincide con: {descripcionCoincidencia(fila.coincidencias[0].doc)}
+                              </p>
+                            ) : null}
                           </td>
                         </tr>
                       ))}
