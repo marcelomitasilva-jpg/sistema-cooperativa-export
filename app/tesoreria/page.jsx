@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import NavPrincipal from "@/components/NavPrincipal";
 import { supabase } from "@/lib/supabase-client";
 import { registrarAsientoContable } from "@/lib/asientos-contables";
@@ -204,6 +204,7 @@ export default function TesoreriaPage() {
   const [distribuidores, setDistribuidores] = useState([]);
   const [archivos, setArchivos] = useState([]);
   const [mensaje, setMensaje] = useState("");
+  const [consultaDeuda, setConsultaDeuda] = useState("");
   const [setupPendiente, setSetupPendiente] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -260,6 +261,48 @@ export default function TesoreriaPage() {
     [distribuidores]
   );
   const centrosPorId = useMemo(() => new Map(centrosCosto.map((centro) => [String(centro.id), centro])), [centrosCosto]);
+
+  const nombreContraparte = useCallback(
+    (item) =>
+      sociosPorId.get(String(item.socio_id))?.nombre ||
+      distribuidoresPorId.get(String(item.distribuidor_id))?.nombre ||
+      item.contraparte_nombre ||
+      item.beneficiario ||
+      item.responsable ||
+      "Sin nombre",
+    [distribuidoresPorId, sociosPorId]
+  );
+
+  const deudasPendientes = useMemo(() => {
+    const busqueda = normalizar(consultaDeuda.trim());
+    return movimientos
+      .filter((item) => numero(item.saldo_pendiente) > 0)
+      .filter((item) => {
+        if (!busqueda) return true;
+        const texto = normalizar(
+          [
+            nombreContraparte(item),
+            item.detalle,
+            item.numero_recibo,
+            item.folio,
+            item.modalidad_operacion,
+            item.categoria,
+            item.condiciones_prestamo,
+          ].join(" ")
+        );
+        return texto.includes(busqueda);
+      })
+      .sort((a, b) => {
+        const fechaA = a.fecha_compromiso || a.fecha || "";
+        const fechaB = b.fecha_compromiso || b.fecha || "";
+        return String(fechaA).localeCompare(String(fechaB));
+      });
+  }, [consultaDeuda, movimientos, nombreContraparte]);
+
+  const totalConsultaDeuda = useMemo(
+    () => deudasPendientes.reduce((total, item) => total + numero(item.saldo_pendiente), 0),
+    [deudasPendientes]
+  );
 
   const resumen = useMemo(() => {
     return movimientos.reduce(
@@ -585,6 +628,76 @@ export default function TesoreriaPage() {
               <p className="text-xs font-black uppercase text-slate-500">Saldos pendientes</p>
               <p className="mt-1 text-2xl font-black text-amber-800">{moneda(resumen.saldos)}</p>
             </div>
+          </section>
+
+          <section className="module-card p-5">
+            <div className="grid gap-4 lg:grid-cols-[1fr_240px] lg:items-end">
+              <div>
+                <p className="text-sm font-black uppercase tracking-wide text-amber-700">Consulta rapida</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">Buscar deuda o pago pendiente</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-600">
+                  Escriba nombre de socio, proveedor, cooperativa, recibo, folio o detalle para saber cuanto se adeuda.
+                </p>
+                <input
+                  value={consultaDeuda}
+                  onChange={(e) => setConsultaDeuda(e.target.value)}
+                  placeholder="Ej. VELRAM, ARANCIBIA, recibo 120, diesel, folio 8"
+                  className="mt-4 w-full border px-3 py-3 text-base font-semibold"
+                />
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs font-black uppercase text-amber-700">Total encontrado</p>
+                <p className="mt-1 text-3xl font-black text-amber-900">{moneda(totalConsultaDeuda)}</p>
+                <p className="mt-1 text-sm font-bold text-amber-800">{deudasPendientes.length} pendiente(s)</p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              {deudasPendientes.slice(0, 8).map((item) => (
+                <article key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-lg font-black text-slate-950">{nombreContraparte(item)}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700">{item.detalle}</p>
+                      <p className="mt-1 text-xs font-bold text-slate-500">
+                        {item.fecha} | Recibo {item.numero_recibo || "s/n"} | Folio {item.folio || "s/f"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-white px-3 py-2 text-right">
+                      <p className="text-xs font-black uppercase text-amber-700">Debe</p>
+                      <p className="text-xl font-black text-amber-900">{moneda(item.saldo_pendiente)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+                    <span className="rounded-full bg-white px-2 py-1 text-slate-700">{item.modalidad_operacion || "contado"}</span>
+                    <span className="rounded-full bg-white px-2 py-1 text-slate-700">{item.estado_pago || "pago_pendiente"}</span>
+                    {item.fecha_compromiso ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">Vence {item.fecha_compromiso}</span>
+                    ) : null}
+                    {item.tiene_interes ? <span className="rounded-full bg-red-100 px-2 py-1 text-red-800">Con interes</span> : null}
+                    {item.compromiso_venta_oro ? (
+                      <span className="rounded-full bg-yellow-100 px-2 py-1 text-yellow-800">Compromiso oro</span>
+                    ) : null}
+                  </div>
+                  {item.condiciones_prestamo ? (
+                    <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                      {item.condiciones_prestamo}
+                    </p>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+
+            {!deudasPendientes.length ? (
+              <p className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                No hay saldos pendientes con esa busqueda.
+              </p>
+            ) : null}
+            {deudasPendientes.length > 8 ? (
+              <p className="mt-4 text-sm font-bold text-slate-600">
+                Mostrando 8 de {deudasPendientes.length}. Escriba mas datos para afinar la busqueda.
+              </p>
+            ) : null}
           </section>
 
           <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
@@ -973,13 +1086,7 @@ export default function TesoreriaPage() {
                           {item.compromiso_venta_oro ? <p className="text-xs font-semibold text-amber-700">Compromiso oro</p> : null}
                         </td>
                         <td className="px-3 py-3 text-slate-700">
-                          <p className="font-semibold">
-                            {sociosPorId.get(String(item.socio_id))?.nombre ||
-                              distribuidoresPorId.get(String(item.distribuidor_id))?.nombre ||
-                              item.contraparte_nombre ||
-                              item.beneficiario ||
-                              "-"}
-                          </p>
+                          <p className="font-semibold">{nombreContraparte(item)}</p>
                           {item.tiene_interes ? <p className="text-xs font-semibold text-red-700">Con interes</p> : null}
                         </td>
                         <td className="px-3 py-3 text-slate-700">
