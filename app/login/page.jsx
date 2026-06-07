@@ -92,16 +92,33 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#edf2e6] px-4 py-10">
-      <Link href="/" className="mb-6 text-sm font-bold text-emerald-800 hover:text-emerald-950">
-        Volver al inicio
-      </Link>
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <section className="grid w-full max-w-5xl gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
+        <div className="page-hero flex flex-col justify-between p-6 md:p-8">
+          <div>
+            <Link href="/" className="text-sm font-black text-teal-200 hover:text-white">
+              Volver al inicio
+            </Link>
+            <p className="mt-10 text-sm font-black uppercase text-teal-200">Acceso seguro</p>
+            <h1 className="mt-2 text-4xl font-black leading-tight">Entrar al sistema cooperativo</h1>
+            <p className="mt-4 text-base font-semibold leading-relaxed text-slate-200">
+              Use su cuenta asignada. Si solo esta probando, puede entrar como invitado de desarrollo.
+            </p>
+          </div>
+          <div className="mt-8 rounded-lg border border-white/15 bg-white/10 p-4">
+            <p className="text-sm font-black text-white">Trabajo protegido</p>
+            <p className="mt-1 text-sm font-semibold text-slate-200">
+              Los respaldos, deudas y movimientos deben quedar con usuario y fecha para auditoria.
+            </p>
+          </div>
+        </div>
 
-      <form onSubmit={handleLogin} className="module-card w-full max-w-md p-8">
-        <h1 className="text-center text-3xl font-black text-slate-950">Entrar al sistema</h1>
-        <p className="mt-2 text-center text-sm font-semibold text-slate-600">
-          Use su correo y contrasena de la cooperativa.
-        </p>
+        <form onSubmit={handleLogin} className="module-card w-full p-6 md:p-8">
+          <p className="eyebrow text-center">Identificacion</p>
+          <h2 className="mt-1 text-center text-3xl font-black text-slate-950">Ingrese sus datos</h2>
+          <p className="mt-2 text-center text-sm font-semibold text-slate-600">
+            Correo y contrasena de la cooperativa.
+          </p>
 
         {error ? (
           <div
@@ -168,7 +185,8 @@ export default function LoginPage() {
         <p className="mt-3 text-center text-xs font-semibold text-amber-700">
           Solo para pruebas. Sin correo ni contrasena.
         </p>
-      </form>
+        </form>
+      </section>
     </main>
   );
 }
