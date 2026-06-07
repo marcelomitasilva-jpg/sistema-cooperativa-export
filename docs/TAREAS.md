@@ -200,9 +200,21 @@ _(Agregar ideas nuevas aquí)_
 - [x] **P1** Crear modulo de Tesoreria diaria (`/tesoreria`) para ingresos, egresos, venta de oro, prestamos, fiados, pagos a cuenta y saldos pendientes.
 - [x] **P1** Crear modulo de Cuentas pendientes (`/cuentas`) para cuentas por pagar, cuentas por cobrar y busqueda rapida por socio, proveedor, recibo, folio o detalle.
 - [x] **P1** Agregar alertas de vencimiento en Tesoreria cuando ingrese efectivo u oro: deudas vencidas, por vencer y compromisos de venta de oro.
+- [x] **P1** Agregar consulta DELAPAZ en Tesoreria: codigo consumidor, deuda, meses pendientes, seleccion de meses y preparacion de gasto.
 - [ ] **P1** Conectar Tesoreria con Almacen: compra registrada por tesorero -> ingreso fisico confirmado por almacenero -> stock actualizado -> respaldo unido por recibo/folio.
+- [ ] **P1** Completar flujo DELAPAZ: registrar QR generado, subir comprobante, marcar pagado y dejar historial por periodo/factura.
 - [ ] **P1** Crear modulo de compromisos de oro: prestamos en Bs/oro, devolucion en oro, compromiso de vender oro, gramos comprometidos, venta que cancela el compromiso.
 - [ ] **P1** Crear tablero del Directorio: caja, saldos por pagar, saldos por cobrar, oro vendido, produccion, rendiciones pendientes, almacen critico y deudas vencidas.
 - [ ] **P2** Crear modulo de maquinaria y mantenimiento: maquinaria, combustible usado, repuestos, horas de trabajo, lugar Mina/Tujo/Rio y costo por equipo.
 - [ ] **P2** Crear reporte para asamblea: ingresos, egresos, deudas, oro vendido, almacen, socios con pendientes, observaciones y respaldos disponibles.
 - [ ] **P2** Mejorar interfaz general despues de completar los puntos anteriores: pantallas mas limpias, mejores tarjetas, busquedas visibles, botones grandes, alertas claras y diseño mas profesional.
+
+---
+
+## Fase 11 - App modular para socios y comisionados
+
+- [ ] **P1** Disenar PWA/app ligera conectada al mismo Supabase para que socios/comisionados suban rendiciones, viaticos y respaldos desde celular.
+- [ ] **P1** Modulo comisionado: destino, acompanantes, fecha ida/vuelta, tarea realizada, compras, cotizaciones, comida, hotel, transporte, gastos de representacion y observaciones.
+- [ ] **P1** Modulo socio: ver saldos, rendiciones pendientes, entregas a cuenta, deudas, viaticos y comprobantes cargados.
+- [ ] **P1** Flujo de captura movil: foto recibo/factura -> IA extrae -> usuario corrige -> guarda -> respaldo visible para tesorero/comision revisora.
+- [ ] **P2** Notificaciones simples para rendiciones pendientes, deudas vencidas, pagos observados y solicitudes de correccion.
