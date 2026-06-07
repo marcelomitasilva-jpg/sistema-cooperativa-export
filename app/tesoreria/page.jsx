@@ -224,6 +224,12 @@ export default function TesoreriaPage() {
   const [setupPendiente, setSetupPendiente] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [delapazCodigo, setDelapazCodigo] = useState("874815");
+  const [delapazEmail, setDelapazEmail] = useState("");
+  const [delapaz, setDelapaz] = useState(null);
+  const [delapazSeleccion, setDelapazSeleccion] = useState([]);
+  const [delapazCargando, setDelapazCargando] = useState(false);
+  const [delapazMensaje, setDelapazMensaje] = useState("");
 
   const cargarDatos = async () => {
     setCargando(true);
@@ -377,6 +383,100 @@ export default function TesoreriaPage() {
   }, [movimientos]);
 
   const actualizar = (campo, valor) => setForm((actual) => ({ ...actual, [campo]: valor }));
+
+  const facturasDelapaz = useMemo(() => delapaz?.accountDetail || [], [delapaz]);
+  const facturasDelapazSeleccionadas = useMemo(
+    () => facturasDelapaz.filter((factura) => delapazSeleccion.includes(String(factura.idFactura))),
+    [delapazSeleccion, facturasDelapaz]
+  );
+  const totalDelapazSeleccionado = useMemo(
+    () => facturasDelapazSeleccionadas.reduce((total, factura) => total + numero(factura.debt), 0),
+    [facturasDelapazSeleccionadas]
+  );
+
+  const consultarDelapaz = async () => {
+    const codigo = delapazCodigo.replace(/\D/g, "");
+    setDelapazMensaje("");
+
+    if (!codigo) {
+      setDelapazMensaje("Anota el codigo de consumidor DELAPAZ.");
+      return;
+    }
+
+    setDelapazCargando(true);
+    setDelapaz(null);
+    setDelapazSeleccion([]);
+
+    try {
+      const res = await fetch("/api/delapaz/deuda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigoConsumidor: codigo }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setDelapazMensaje(data.error || data.message || "No se pudo consultar DELAPAZ.");
+        return;
+      }
+
+      setDelapaz(data);
+      const pendientes = data.accountDetail || [];
+      setDelapazSeleccion(pendientes.length ? [String(pendientes[0].idFactura)] : []);
+      setDelapazMensaje(pendientes.length ? "Consulta lista. Elige el mes o meses que se pagaran." : "DELAPAZ no devolvio deuda pendiente.");
+    } catch (error) {
+      setDelapazMensaje(`No se pudo conectar con DELAPAZ: ${error.message}`);
+    } finally {
+      setDelapazCargando(false);
+    }
+  };
+
+  const cambiarFacturaDelapaz = (factura, marcado) => {
+    const id = String(factura.idFactura);
+    setDelapazSeleccion((actual) => {
+      if (marcado) return Array.from(new Set([...actual, id]));
+      return actual.filter((item) => item !== id);
+    });
+  };
+
+  const prepararGastoDelapaz = () => {
+    if (!facturasDelapazSeleccionadas.length) {
+      setDelapazMensaje("Primero elige al menos una factura DELAPAZ.");
+      return;
+    }
+
+    const periodos = facturasDelapazSeleccionadas.map((factura) => factura.period).join(", ");
+    const vencimientos = facturasDelapazSeleccionadas
+      .map((factura) => `${factura.period} vence ${factura.expirationDate}`)
+      .join(" | ");
+
+    setForm((actual) => ({
+      ...actual,
+      tipo_movimiento: "egreso",
+      categoria: "servicios",
+      detalle: `Pago energia electrica DELAPAZ codigo ${delapaz.consumerCode} periodos ${periodos}`,
+      monto: String(totalDelapazSeleccionado.toFixed(2)),
+      total_operacion: String(totalDelapazSeleccionado.toFixed(2)),
+      pago_a_cuenta: String(totalDelapazSeleccionado.toFixed(2)),
+      forma_pago: "banco",
+      modalidad_operacion: "contado",
+      contraparte_tipo: "empresa",
+      contraparte_nombre: "DELAPAZ",
+      beneficiario: "DELAPAZ",
+      fecha_compromiso: facturasDelapazSeleccionadas[0]?.expirationDate || "",
+      numero_recibo: facturasDelapazSeleccionadas.map((factura) => factura.codeInvoicePrint).join(", "),
+      observaciones: `Consulta DELAPAZ: ${vencimientos}. Generar QR y subir comprobante luego del pago.`,
+    }));
+    setDelapazMensaje("Listo: el gasto se preparo abajo. Cuando pagues, sube el comprobante y guarda el movimiento.");
+  };
+
+  const abrirPagoDelapaz = () => {
+    if (!facturasDelapazSeleccionadas.length) {
+      setDelapazMensaje("Primero elige al menos una factura para pagar.");
+      return;
+    }
+    window.open("https://dlppagos.et.bo/public/login", "_blank", "noopener,noreferrer");
+  };
 
   const cambiarTipo = (tipo) => {
     setForm((actual) => ({
@@ -680,6 +780,162 @@ export default function TesoreriaPage() {
             <div className="module-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Saldos pendientes</p>
               <p className="mt-1 text-2xl font-black text-amber-800">{moneda(resumen.saldos)}</p>
+            </div>
+          </section>
+
+          <section className="module-card overflow-hidden">
+            <div className="bg-slate-950 px-5 py-4 text-white">
+              <p className="text-sm font-black uppercase tracking-wide text-emerald-300">Servicios basicos</p>
+              <h2 className="mt-1 text-2xl font-black">DELAPAZ: consultar deuda y preparar QR</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-200">
+                Con manzanas: aqui miras cuanto se debe, eliges que meses pagar y luego abres DELAPAZ para generar el QR oficial.
+              </p>
+            </div>
+
+            <div className="grid gap-5 p-5 xl:grid-cols-[360px_1fr]">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <label className="field-label">Codigo consumidor DELAPAZ</label>
+                <input
+                  value={delapazCodigo}
+                  onChange={(e) => setDelapazCodigo(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Ej. 874815"
+                  className="w-full border px-3 py-3 text-xl font-black"
+                />
+
+                <label className="field-label mt-4">Correo para pago oficial</label>
+                <input
+                  type="email"
+                  value={delapazEmail}
+                  onChange={(e) => setDelapazEmail(e.target.value)}
+                  placeholder="Correo que usaras en DELAPAZ"
+                  className="w-full border px-3 py-3"
+                />
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  DELAPAZ pide correo antes de generar QR. Lo anotamos aqui solo como ayuda visual.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={consultarDelapaz}
+                  disabled={delapazCargando}
+                  className="mt-4 w-full rounded-lg bg-emerald-700 px-4 py-3 text-lg font-black text-white disabled:opacity-60"
+                >
+                  {delapazCargando ? "Consultando..." : "Consultar deuda"}
+                </button>
+
+                {delapazMensaje ? (
+                  <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">
+                    {delapazMensaje}
+                  </p>
+                ) : null}
+              </div>
+
+              <div>
+                {delapaz ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-black uppercase text-slate-500">Consumidor</p>
+                        <p className="mt-1 text-lg font-black text-slate-950">{delapaz.consumerName || "Sin nombre"}</p>
+                        <p className="text-sm font-bold text-slate-500">Codigo {delapaz.consumerCode}</p>
+                      </div>
+                      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                        <p className="text-xs font-black uppercase text-red-700">Deuda DELAPAZ</p>
+                        <p className="mt-1 text-2xl font-black text-red-900">{moneda(delapaz.totalAccount)}</p>
+                        <p className="text-sm font-bold text-red-700">{delapaz.collectionMessage || "Estado no informado"}</p>
+                      </div>
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-xs font-black uppercase text-emerald-700">Elegido para QR</p>
+                        <p className="mt-1 text-2xl font-black text-emerald-900">{moneda(totalDelapazSeleccionado)}</p>
+                        <p className="text-sm font-bold text-emerald-700">{facturasDelapazSeleccionadas.length} mes(es)</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-4 py-3">
+                        <p className="font-black text-slate-950">Elige que meses se pagaran</p>
+                        <p className="text-sm font-semibold text-slate-600">
+                          Puedes pagar solo un mes, dos meses o todos. El sistema suma lo seleccionado.
+                        </p>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {facturasDelapaz.map((factura) => {
+                          const seleccionado = delapazSeleccion.includes(String(factura.idFactura));
+                          return (
+                            <label
+                              key={factura.idFactura}
+                              className={`flex cursor-pointer flex-col gap-3 p-4 transition sm:flex-row sm:items-center sm:justify-between ${
+                                seleccionado ? "bg-emerald-50" : "hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={seleccionado}
+                                  onChange={(e) => cambiarFacturaDelapaz(factura, e.target.checked)}
+                                  className="mt-1 h-5 w-5"
+                                />
+                                <div>
+                                  <p className="text-lg font-black text-slate-950">{factura.period}</p>
+                                  <p className="text-sm font-semibold text-slate-600">
+                                    Emision {factura.dateOfIssue} | Vence {factura.expirationDate} | Consumo {factura.consumption} kWh
+                                  </p>
+                                  <p className="text-xs font-bold text-slate-500">Codigo factura {factura.codeInvoicePrint}</p>
+                                </div>
+                              </div>
+                              <p className="text-2xl font-black text-slate-950">{moneda(factura.debt)}</p>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={() => setDelapazSeleccion(facturasDelapaz.map((factura) => String(factura.idFactura)))}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-black text-slate-800"
+                      >
+                        Marcar todos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={prepararGastoDelapaz}
+                        className="rounded-lg bg-amber-600 px-4 py-3 font-black text-white"
+                      >
+                        Preparar gasto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={abrirPagoDelapaz}
+                        className="rounded-lg bg-slate-950 px-4 py-3 font-black text-white"
+                      >
+                        Abrir QR oficial
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm font-semibold text-sky-900">
+                      <p className="font-black">Como pagar con QR</p>
+                      <p className="mt-1">
+                        En la pagina oficial usa el codigo {delapaz.consumerCode}
+                        {delapazEmail ? ` y el correo ${delapazEmail}` : ""}. Marca los mismos meses que elegiste aqui:
+                        {" "}
+                        {facturasDelapazSeleccionadas.map((factura) => factura.period).join(", ") || "ningun mes elegido"}.
+                        Luego descarga o captura el QR y, despues de pagar, sube el comprobante en el gasto preparado.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-72 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                    <div>
+                      <p className="text-xl font-black text-slate-900">Primero consulta el codigo DELAPAZ</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Despues apareceran los meses pendientes para escoger cuales pagar.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
