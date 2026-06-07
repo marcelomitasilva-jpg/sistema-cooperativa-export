@@ -306,9 +306,11 @@ export default function PanelAuditoria() {
                           </p>
                           <p className="text-xs text-slate-600">
                             Recibo: {movimiento.numero_recibo || "s/n"} | Folio:{" "}
-                            {movimiento.folio || "s/f"} | Origen rendicion:{" "}
-                            {movimiento.origen_rendicion_id
-                              ? `#${movimiento.origen_rendicion_id}`
+                            {movimiento.folio || "s/f"} | Origen:{" "}
+                            {movimiento.origen_tesoreria_id
+                              ? `Tesoreria #${movimiento.origen_tesoreria_id}`
+                              : movimiento.origen_rendicion_id
+                              ? `Rendicion #${movimiento.origen_rendicion_id}`
                               : "sin vinculo"}
                           </p>
                           <p className="text-xs text-slate-600">

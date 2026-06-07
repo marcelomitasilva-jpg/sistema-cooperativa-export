@@ -201,7 +201,7 @@ _(Agregar ideas nuevas aquí)_
 - [x] **P1** Crear modulo de Cuentas pendientes (`/cuentas`) para cuentas por pagar, cuentas por cobrar y busqueda rapida por socio, proveedor, recibo, folio o detalle.
 - [x] **P1** Agregar alertas de vencimiento en Tesoreria cuando ingrese efectivo u oro: deudas vencidas, por vencer y compromisos de venta de oro.
 - [x] **P1** Agregar consulta DELAPAZ en Tesoreria: codigo consumidor, deuda, meses pendientes, seleccion de meses y preparacion de gasto.
-- [ ] **P1** Conectar Tesoreria con Almacen: compra registrada por tesorero -> ingreso fisico confirmado por almacenero -> stock actualizado -> respaldo unido por recibo/folio.
+- [x] **P1** Conectar Tesoreria con Almacen: compra registrada por tesorero -> ingreso fisico confirmado por almacenero -> stock actualizado -> respaldo unido por recibo/folio. *(Codigo listo; ejecutar `docs/supabase-tesoreria-almacen.sql` para vinculo formal por `origen_tesoreria_id`.)*
 - [ ] **P1** Completar flujo DELAPAZ: registrar QR generado, subir comprobante, marcar pagado y dejar historial por periodo/factura.
 - [ ] **P1** Crear modulo de compromisos de oro: prestamos en Bs/oro, devolucion en oro, compromiso de vender oro, gramos comprometidos, venta que cancela el compromiso.
 - [ ] **P1** Crear tablero del Directorio: caja, saldos por pagar, saldos por cobrar, oro vendido, produccion, rendiciones pendientes, almacen critico y deudas vencidas.

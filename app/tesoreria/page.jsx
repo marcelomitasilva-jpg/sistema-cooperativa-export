@@ -66,6 +66,34 @@ const CATEGORIAS = [
   ["otros", "Otros"],
 ];
 
+const CATEGORIAS_ALMACEN = new Set([
+  "combustible",
+  "explosivos",
+  "lubricantes",
+  "repuestos",
+  "herramientas",
+]);
+
+const PALABRAS_ALMACEN = [
+  "almacen",
+  "combustible",
+  "diesel",
+  "gasolina",
+  "aceite",
+  "grasa",
+  "explosivo",
+  "guia",
+  "masa",
+  "fulminante",
+  "herramienta",
+  "material",
+  "repuesto",
+  "madera",
+  "electrodo",
+  "maquinaria",
+  "equipo",
+];
+
 const FORM_INICIAL = {
   fecha: new Date().toISOString().slice(0, 10),
   tipo_movimiento: "egreso",
@@ -101,6 +129,7 @@ const FORM_INICIAL = {
   numero_recibo: "",
   folio: "",
   centro_costo_id: "",
+  requiere_ingreso_almacen: false,
   observaciones: "",
   creado_por: "",
 };
@@ -209,6 +238,29 @@ function textoVencimiento(fecha) {
   if (dias < 0) return `Vencido hace ${Math.abs(dias)} dia(s)`;
   if (dias === 0) return "Vence hoy";
   return `Vence en ${dias} dia(s)`;
+}
+
+function sugerirCruceAlmacen(form) {
+  if (form.tipo_movimiento !== "egreso") return false;
+  if (CATEGORIAS_ALMACEN.has(form.categoria)) return true;
+  const texto = normalizar([form.categoria, form.detalle, form.observaciones, form.destino_uso].join(" "));
+  return PALABRAS_ALMACEN.some((palabra) => texto.includes(palabra));
+}
+
+function requiereCruceAlmacen(form) {
+  return Boolean(form.requiere_ingreso_almacen);
+}
+
+function rubroAlmacenDesdeCategoria(categoria) {
+  const mapa = {
+    combustible: "Combustible",
+    lubricantes: "Aceites y grasas",
+    explosivos: "Explosivos",
+    repuestos: "Materiales y repuestos",
+    herramientas: "Herramientas",
+    servicios: "Compra directa consumida",
+  };
+  return mapa[categoria] || "Materiales y repuestos";
 }
 
 export default function TesoreriaPage() {
@@ -382,7 +434,19 @@ export default function TesoreriaPage() {
     );
   }, [movimientos]);
 
-  const actualizar = (campo, valor) => setForm((actual) => ({ ...actual, [campo]: valor }));
+  const cruceAlmacenSugerido = useMemo(() => sugerirCruceAlmacen(form), [form]);
+
+  const actualizar = (campo, valor) =>
+    setForm((actual) => {
+      const siguiente = { ...actual, [campo]: valor };
+      if (campo === "categoria" && actual.tipo_movimiento === "egreso" && CATEGORIAS_ALMACEN.has(valor)) {
+        siguiente.requiere_ingreso_almacen = true;
+      }
+      if (campo === "tipo_movimiento" && valor !== "egreso") {
+        siguiente.requiere_ingreso_almacen = false;
+      }
+      return siguiente;
+    });
 
   const facturasDelapaz = useMemo(() => delapaz?.accountDetail || [], [delapaz]);
   const facturasDelapazSeleccionadas = useMemo(
@@ -485,6 +549,7 @@ export default function TesoreriaPage() {
       categoria: tipo === "venta_oro" ? "oro" : tipo === "ingreso" ? "aportes" : actual.categoria,
       modalidad_operacion: tipo === "prestamo_recibido" ? "prestamo_efectivo" : tipo === "venta_oro" ? "contado" : actual.modalidad_operacion,
       contraparte_tipo: tipo === "prestamo_recibido" ? "socio" : actual.contraparte_tipo,
+      requiere_ingreso_almacen: tipo === "egreso" ? CATEGORIAS_ALMACEN.has(actual.categoria) : false,
     }));
   };
 
@@ -543,6 +608,88 @@ export default function TesoreriaPage() {
     if (registros.length) {
       await supabase.from("tesoreria_respaldos").insert(registros);
     }
+  };
+
+  const existeMovimientoAlmacen = async (movimientoId) => {
+    const { data, error } = await supabase
+      .from("almacen_movimientos_auditado")
+      .select("id_movimiento")
+      .eq("origen_tesoreria_id", movimientoId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!error) return Boolean(data);
+
+    const mensajeError = `${error.message || ""} ${error.details || ""}`;
+    if (!/schema cache|column|Could not find|origen_tesoreria/i.test(mensajeError)) {
+      return false;
+    }
+
+    if (!form.numero_recibo && !form.folio) return false;
+
+    let consulta = supabase
+      .from("almacen_movimientos_auditado")
+      .select("id_movimiento")
+      .limit(1);
+    if (form.numero_recibo) consulta = consulta.eq("numero_recibo", form.numero_recibo);
+    if (form.folio) consulta = consulta.eq("folio", form.folio);
+    const fallback = await consulta.maybeSingle();
+    return Boolean(fallback.data);
+  };
+
+  const generarIngresoAlmacenPendiente = async (movimientoId, payloadTesoreria) => {
+    if (!requiereCruceAlmacen(form)) return { ok: true, mensaje: "" };
+
+    const yaExiste = await existeMovimientoAlmacen(movimientoId);
+    if (yaExiste) return { ok: true, mensaje: " Almacen ya tenia un pendiente vinculado." };
+
+    const nombreContraparteAlmacen =
+      payloadTesoreria.contraparte_nombre ||
+      distribuidoresPorId.get(String(payloadTesoreria.distribuidor_id))?.nombre ||
+      sociosPorId.get(String(payloadTesoreria.socio_id))?.nombre ||
+      payloadTesoreria.beneficiario ||
+      null;
+
+    const payloadAlmacen = {
+      fecha_movimiento: payloadTesoreria.fecha,
+      item_nombre: payloadTesoreria.detalle.slice(0, 140),
+      cantidad: 1,
+      unidad: "lote",
+      tipo_movimiento: "Ingreso",
+      rubro: rubroAlmacenDesdeCategoria(payloadTesoreria.categoria),
+      subrubro: payloadTesoreria.categoria,
+      distribuidor_id: payloadTesoreria.distribuidor_id || null,
+      proveedor_nombre: nombreContraparteAlmacen,
+      comprado_por: payloadTesoreria.responsable || payloadTesoreria.creado_por || null,
+      recibido_por: [],
+      numero_recibo: payloadTesoreria.numero_recibo || null,
+      folio: payloadTesoreria.folio || null,
+      destino_uso: centrosPorId.get(String(payloadTesoreria.centro_costo_id))?.nombre || null,
+      estado_verificacion: "pendiente_verificacion",
+      sello_recibo: false,
+      origen_tesoreria_id: movimientoId,
+      observaciones:
+        `Generado desde Tesoreria #${movimientoId}. ` +
+        `Monto compra: ${moneda(payloadTesoreria.total_operacion || payloadTesoreria.monto)}. ` +
+        "Almacenero debe verificar ingreso fisico, cantidad real y sello del recibo.",
+    };
+
+    const insertar = async (datos) => supabase.from("almacen_movimientos_auditado").insert([datos]);
+    let { error } = await insertar(payloadAlmacen);
+
+    if (error && /schema cache|column|Could not find|origen_tesoreria/i.test(`${error.message || ""} ${error.details || ""}`)) {
+      const { origen_tesoreria_id, ...sinVinculo } = payloadAlmacen;
+      ({ error } = await insertar({
+        ...sinVinculo,
+        observaciones: `${sinVinculo.observaciones} Vinculo formal pendiente: ejecutar SQL de Tesoreria-Almacen.`,
+      }));
+    }
+
+    if (error) {
+      return { ok: false, mensaje: " No se pudo crear el pendiente de almacen; revisar manualmente." };
+    }
+
+    return { ok: true, mensaje: " Movimiento pendiente de almacen generado." };
   };
 
   const guardar = async (e) => {
@@ -618,6 +765,7 @@ export default function TesoreriaPage() {
       numero_recibo: form.numero_recibo || null,
       folio: form.folio || null,
       centro_costo_id: form.centro_costo_id ? Number(form.centro_costo_id) : null,
+      requiere_ingreso_almacen: Boolean(form.requiere_ingreso_almacen),
       cuenta_debe_id: debe?.id_cuenta || null,
       cuenta_haber_id: haber?.id_cuenta || null,
       estado: estadoInicial,
@@ -653,13 +801,14 @@ export default function TesoreriaPage() {
         pago_a_cuenta,
         saldo_pendiente,
         estado_pago,
+        requiere_ingreso_almacen,
         ...payloadBasico
       } = payload;
       ({ data: movimiento, error } = await insertarMovimiento({
         ...payloadBasico,
         observaciones: [
           payload.observaciones,
-          `Condiciones no guardadas por falta de SQL actualizado: modalidad ${modalidad_operacion}, contraparte ${contraparte_tipo}, socio ${socio_id || ""}, distribuidor ${distribuidor_id || ""}, nombre ${contraparte_nombre || ""}, origen ${moneda_origen}, devolucion ${moneda_devolucion}, monto prestamo ${monto_prestamo || ""}, gramos ${gramos_prestamo || ""}, fecha compromiso ${fecha_compromiso || ""}, interes ${tiene_interes ? interes_detalle || "si" : "no"}, compromiso oro ${compromiso_venta_oro ? "si" : "no"}, total ${total_operacion || ""}, pago a cuenta ${pago_a_cuenta || ""}, saldo ${saldo_pendiente || ""}, estado pago ${estado_pago || ""}, condiciones ${condiciones_prestamo || ""}`,
+          `Condiciones no guardadas por falta de SQL actualizado: modalidad ${modalidad_operacion}, contraparte ${contraparte_tipo}, socio ${socio_id || ""}, distribuidor ${distribuidor_id || ""}, nombre ${contraparte_nombre || ""}, origen ${moneda_origen}, devolucion ${moneda_devolucion}, monto prestamo ${monto_prestamo || ""}, gramos ${gramos_prestamo || ""}, fecha compromiso ${fecha_compromiso || ""}, interes ${tiene_interes ? interes_detalle || "si" : "no"}, compromiso oro ${compromiso_venta_oro ? "si" : "no"}, total ${total_operacion || ""}, pago a cuenta ${pago_a_cuenta || ""}, saldo ${saldo_pendiente || ""}, estado pago ${estado_pago || ""}, requiere almacen ${requiere_ingreso_almacen ? "si" : "no"}, condiciones ${condiciones_prestamo || ""}`,
         ].filter(Boolean).join(" | "),
       }));
     }
@@ -671,6 +820,7 @@ export default function TesoreriaPage() {
     }
 
     await subirRespaldos(movimiento.id);
+    const cruceAlmacen = await generarIngresoAlmacenPendiente(movimiento.id, payload);
 
     let asiento = { ok: false };
     if (estadoInicial !== "observado") {
@@ -717,15 +867,15 @@ export default function TesoreriaPage() {
         .from("tesoreria_movimientos")
         .update({ estado: "contabilizado", asiento_id: asiento.id })
         .eq("id", movimiento.id);
-      setMensaje("Movimiento guardado y asiento contable generado automaticamente.");
+      setMensaje(`Movimiento guardado y asiento contable generado automaticamente.${cruceAlmacen.mensaje}`);
     } else if (estadoInicial === "observado") {
-      setMensaje("Movimiento guardado como observado. Falta configurar o revisar cuentas contables.");
+      setMensaje(`Movimiento guardado como observado. Falta configurar o revisar cuentas contables.${cruceAlmacen.mensaje}`);
     } else {
       await supabase
         .from("tesoreria_movimientos")
         .update({ estado: "observado", observaciones: asiento.error?.message || "No se pudo generar asiento." })
         .eq("id", movimiento.id);
-      setMensaje(`Movimiento guardado, pero contabilidad quedo pendiente: ${asiento.error?.message || "revisar asiento"}`);
+      setMensaje(`Movimiento guardado, pero contabilidad quedo pendiente: ${asiento.error?.message || "revisar asiento"}.${cruceAlmacen.mensaje}`);
     }
 
     setForm(FORM_INICIAL);
@@ -1209,6 +1359,35 @@ export default function TesoreriaPage() {
                     </select>
                   </div>
                 </div>
+
+                {form.tipo_movimiento === "egreso" ? (
+                  <div className={`rounded-lg border p-4 ${
+                    cruceAlmacenSugerido
+                      ? "border-blue-200 bg-blue-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}>
+                    <label className="flex items-start gap-3 text-sm font-black text-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={form.requiere_ingreso_almacen}
+                        onChange={(e) => actualizar("requiere_ingreso_almacen", e.target.checked)}
+                        className="mt-1 h-5 w-5"
+                      />
+                      <span>
+                        Esta compra debe pasar por Almacen
+                        <span className="mt-1 block text-xs font-semibold text-slate-600">
+                          Use esto para diesel, gasolina, aceites, grasa, explosivos, herramientas, repuestos o materiales.
+                          Al guardar, Almacen recibira un pendiente para verificar cantidad real y sellar recibo.
+                        </span>
+                      </span>
+                    </label>
+                    {cruceAlmacenSugerido ? (
+                      <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-black text-blue-800">
+                        Sugerido por el sistema: esta categoria o detalle parece insumo de almacen.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
                   <p className="font-black text-sky-950">Forma real de la operacion</p>
