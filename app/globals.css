@@ -150,10 +150,122 @@ table textarea {
     var(--background);
 }
 
+.app-shell > main {
+  min-height: 100vh;
+}
+
 .page-wrap {
   width: min(100%, 1360px);
   margin: 0 auto;
   padding: 22px 16px 44px;
+}
+
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid rgba(15, 31, 46, 0.12);
+  background: #0b1724;
+  color: white;
+  box-shadow: 0 12px 30px rgba(15, 31, 46, 0.12);
+}
+
+.app-nav-brand {
+  padding: 14px 14px 4px;
+}
+
+.brand-mark {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
+  color: white;
+  font-size: 0.86rem;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(20, 184, 166, 0.18);
+}
+
+.app-nav-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 12px 12px;
+}
+
+.app-nav-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px;
+}
+
+.app-nav-title {
+  display: none;
+}
+
+.app-nav-link {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #d7e2ee;
+  font-size: 0.88rem;
+  font-weight: 850;
+  white-space: nowrap;
+  transition: 140ms ease;
+}
+
+.app-nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.app-nav-link.is-active {
+  background: #ffffff;
+  color: #0b1724;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+.app-nav-code {
+  display: inline-flex;
+  min-width: 26px;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 3px 5px;
+  color: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.app-nav-link.is-active .app-nav-code {
+  background: #e6f6f3;
+  color: var(--brand-strong);
+}
+
+.app-nav-footer {
+  display: none;
+}
+
+.app-nav-exit {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-weight: 900;
 }
 
 .module-card {
@@ -262,5 +374,60 @@ table textarea {
   h1 {
     font-size: 1.85rem !important;
     line-height: 1.12 !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-nav {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 0;
+    background:
+      linear-gradient(180deg, rgba(20, 184, 166, 0.12), transparent 18rem),
+      #0b1724;
+  }
+
+  .app-shell > main {
+    margin-left: 280px;
+  }
+
+  .app-nav-brand {
+    padding: 20px 18px 10px;
+  }
+
+  .app-nav-scroll {
+    display: block;
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 4px 12px 16px;
+  }
+
+  .app-nav-group {
+    display: block;
+    background: transparent;
+    padding: 8px 0;
+  }
+
+  .app-nav-title {
+    display: block;
+    margin: 10px 8px 7px;
+    color: #7f93a8;
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .app-nav-link {
+    min-height: 44px;
+    padding: 0 10px;
+  }
+
+  .app-nav-footer {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
   }
 }

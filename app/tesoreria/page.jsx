@@ -739,13 +739,28 @@ export default function TesoreriaPage() {
       <NavPrincipal />
       <main>
         <div className="page-wrap space-y-6">
-          <section className="module-card p-5">
-            <p className="text-sm font-black uppercase tracking-wide text-emerald-800">Tesoreria diaria</p>
-            <h1 className="mt-1 text-3xl font-black text-slate-950">Caja facil para el tesorero</h1>
-            <p className="mt-2 max-w-4xl text-sm font-semibold leading-relaxed text-slate-600">
-              Aqui se registra el movimiento diario de plata y venta de oro. Con manzanas: el tesorero llena el recibo
-              digital; el sistema arma la contabilidad por detras y avisa si algo queda pendiente.
-            </p>
+          <section className="page-hero overflow-hidden p-0">
+            <div className="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
+              <div className="p-6 md:p-8">
+                <p className="text-sm font-black uppercase tracking-wide text-teal-200">Tesoreria diaria</p>
+                <h1 className="mt-2 max-w-3xl text-4xl font-black leading-tight text-white">
+                  Caja, deudas y pagos en una sola mesa.
+                </h1>
+                <p className="mt-3 max-w-4xl text-base font-semibold leading-relaxed text-slate-200">
+                  El tesorero registra lo que entra y sale; el sistema prepara contabilidad, alertas, saldos y respaldos.
+                </p>
+              </div>
+              <div className="border-t border-white/10 bg-white/10 p-6 lg:border-l lg:border-t-0">
+                <p className="text-xs font-black uppercase text-teal-200">Atajos de trabajo</p>
+                <div className="mt-4 grid gap-2">
+                  {["Registrar gasto", "Consultar deuda", "Preparar DELAPAZ"].map((texto) => (
+                    <span key={texto} className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white">
+                      {texto}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </section>
 
           {mensaje ? (
@@ -761,23 +776,23 @@ export default function TesoreriaPage() {
           ) : null}
 
           <section className="grid gap-4 md:grid-cols-5">
-            <div className="module-card p-4">
+            <div className="metric-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Entradas registradas</p>
               <p className="mt-1 text-2xl font-black text-emerald-800">{moneda(resumen.ingresos)}</p>
             </div>
-            <div className="module-card p-4">
+            <div className="metric-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Salidas registradas</p>
               <p className="mt-1 text-2xl font-black text-red-800">{moneda(resumen.egresos)}</p>
             </div>
-            <div className="module-card p-4">
+            <div className="metric-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Venta de oro</p>
               <p className="mt-1 text-2xl font-black text-amber-800">{moneda(resumen.ventasOro)}</p>
             </div>
-            <div className="module-card p-4">
+            <div className="metric-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Por revisar</p>
               <p className="mt-1 text-2xl font-black text-slate-900">{resumen.pendientes}</p>
             </div>
-            <div className="module-card p-4">
+            <div className="metric-card p-4">
               <p className="text-xs font-black uppercase text-slate-500">Saldos pendientes</p>
               <p className="mt-1 text-2xl font-black text-amber-800">{moneda(resumen.saldos)}</p>
             </div>
