@@ -53,6 +53,16 @@ const FORM_INICIAL = {
   item: "",
   contraparte: "",
   interes_porcentaje: "",
+  precio_unitario: "",
+  precio_referencia: "",
+  diferencia_precio: "",
+  porcentaje_diferencia_precio: "",
+  ley_oro: "",
+  moneda: "BOB",
+  tipo_cambio: "",
+  saldo_caja_antes: "",
+  justificacion_prestamo: "",
+  requiere_respaldo: true,
   saldo_a_favor: "",
   saldo_en_contra: "",
   texto_extraido: "",
@@ -71,6 +81,10 @@ const CAMPOS_REVISION_DOCUMENTO = [
   { key: "monto_ingreso", label: "Ingreso" },
   { key: "monto_egreso", label: "Egreso" },
   { key: "monto_rendido", label: "Rendido" },
+  { key: "cantidad", label: "Cantidad/peso" },
+  { key: "precio_unitario", label: "Precio unitario" },
+  { key: "precio_referencia", label: "Precio referencia" },
+  { key: "saldo_caja_antes", label: "Caja antes" },
   { key: "rubro", label: "Rubro" },
   { key: "subrubro", label: "Subrubro" },
 ];
@@ -90,6 +104,11 @@ const RESPALDO_INICIAL = {
   confianza: "",
   observaciones: "",
 };
+
+const UMBRAL_RESPALDO_ALTO = 1000;
+const UMBRAL_CAJA_PRESTAMO_INNECESARIO = 1000;
+const TOLERANCIA_PRECIO_ORO_MEDIA = 2;
+const TOLERANCIA_PRECIO_ORO_ALTA = 5;
 
 function numero(valor) {
   const n = Number(valor || 0);
@@ -159,6 +178,47 @@ function montoPrincipal(doc) {
   return numero(doc.monto_egreso) || numero(doc.monto_ingreso) || numero(doc.monto_rendido);
 }
 
+function textoDocumento(doc) {
+  return normalizarTexto(
+    [
+      doc.tipo_documento,
+      doc.tipo_movimiento,
+      doc.rubro,
+      doc.subrubro,
+      doc.categoria,
+      doc.concepto,
+      doc.item,
+      doc.contraparte,
+      doc.observaciones,
+    ].join(" ")
+  );
+}
+
+function esPrestamo(doc) {
+  const texto = textoDocumento(doc);
+  return doc.tipo_documento === "prestamo_cooperativa" || texto.includes("prestamo");
+}
+
+function esVentaOro(doc) {
+  const texto = textoDocumento(doc);
+  return doc.tipo_documento === "ventas_oro" || texto.includes("venta oro") || texto.includes("oro");
+}
+
+function necesitaRespaldo(doc) {
+  if (doc.requiere_respaldo === false) return false;
+  return montoPrincipal(doc) >= UMBRAL_RESPALDO_ALTO || esPrestamo(doc) || esVentaOro(doc);
+}
+
+function tieneRespaldoValido(doc, respaldosPorDocumento) {
+  const respaldosDoc = respaldosPorDocumento.get(doc.id) || [];
+  return respaldosDoc.some(
+    (respaldo) =>
+      respaldo.resultado_verificacion === "coincide" ||
+      respaldo.resultado_verificacion === "requiere_revision" ||
+      respaldo.url_archivo
+  );
+}
+
 function montosIguales(a, b) {
   return Math.abs(montoPrincipal(a) - montoPrincipal(b)) < 0.01;
 }
@@ -215,6 +275,33 @@ function encontrarCoincidenciasDocumento(nuevo, documentos) {
     .slice(0, 5);
 }
 
+async function calcularSha256Archivo(file) {
+  if (!file || !window.crypto?.subtle) return null;
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await window.crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function insertarConFallback(tabla, payload, camposOpcionales = []) {
+  const { error } = await supabase.from(tabla).insert([payload]);
+  if (!error) return;
+
+  const textoError = `${error.message || ""} ${error.details || ""}`.toLowerCase();
+  const pareceColumnaFaltante =
+    textoError.includes("schema cache") ||
+    textoError.includes("column") ||
+    textoError.includes("could not find");
+
+  if (!pareceColumnaFaltante || !camposOpcionales.length) throw error;
+
+  const payloadCompatible = { ...payload };
+  camposOpcionales.forEach((campo) => delete payloadCompatible[campo]);
+  const { error: fallbackError } = await supabase.from(tabla).insert([payloadCompatible]);
+  if (fallbackError) throw fallbackError;
+}
+
 function descargarCsv(nombreArchivo, filas) {
   const encabezados = [
     "Tipo",
@@ -265,10 +352,20 @@ function descargarCsv(nombreArchivo, filas) {
   URL.revokeObjectURL(url);
 }
 
-function detectarAnomalias(documentos) {
+function detectarAnomalias(documentos, respaldos = []) {
   const hallazgos = [];
   const porRecibo = new Map();
   const porFolioMes = new Map();
+  const porTipoMes = new Map();
+  const respaldosPorDocumento = new Map();
+
+  respaldos.forEach((respaldo) => {
+    if (!respaldo.documento_id) return;
+    respaldosPorDocumento.set(respaldo.documento_id, [
+      ...(respaldosPorDocumento.get(respaldo.documento_id) || []),
+      respaldo,
+    ]);
+  });
 
   documentos.forEach((doc) => {
     const recibo = (doc.numero_recibo || "").trim().toLowerCase();
@@ -311,6 +408,36 @@ function detectarAnomalias(documentos) {
       });
     }
 
+    if (necesitaRespaldo(doc) && !tieneRespaldoValido(doc, respaldosPorDocumento)) {
+      hallazgos.push({
+        severidad: montoPrincipal(doc) >= UMBRAL_RESPALDO_ALTO || esVentaOro(doc) ? "alta" : "media",
+        tipo: "Falta respaldo fisico",
+        descripcion: `${referenciaAlternativa(doc)} necesita foto de recibo, factura, nota o respaldo original para comprobar ${doc.concepto}.`,
+      });
+    }
+
+    (respaldosPorDocumento.get(doc.id) || []).forEach((respaldo) => {
+      const resultado = respaldo.resultado_verificacion || "pendiente";
+      if (!["coincide", "pendiente", "requiere_revision"].includes(resultado)) {
+        hallazgos.push({
+          severidad: "alta",
+          tipo: "Respaldo no cuadra",
+          descripcion: `El respaldo de ${referenciaAlternativa(doc)} quedo como "${resultado}". Revisar imagen original y movimiento.`,
+        });
+      }
+      if (Array.isArray(respaldo.diferencias) && respaldo.diferencias.length) {
+        hallazgos.push({
+          severidad: resultado === "requiere_revision" ? "media" : "alta",
+          tipo: "Diferencias en respaldo",
+          descripcion: `El respaldo de ${referenciaAlternativa(doc)} tiene diferencias: ${respaldo.diferencias
+            .map((dif) => dif.detalle || dif.campo)
+            .filter(Boolean)
+            .slice(0, 3)
+            .join("; ")}.`,
+        });
+      }
+    });
+
     if (doc.tipo_documento === "entrega_cuenta_rendicion" && egreso > 0 && rendido > 0) {
       const diferencia = egreso - rendido;
       if (Math.abs(diferencia) > 0.01) {
@@ -324,12 +451,90 @@ function detectarAnomalias(documentos) {
       }
     }
 
+    if (esPrestamo(doc)) {
+      if (!doc.contraparte && !doc.persona) {
+        hallazgos.push({
+          severidad: "media",
+          tipo: "Prestamo sin acreedor claro",
+          descripcion: `${referenciaAlternativa(doc)} no indica claramente quien presto el dinero u oro.`,
+        });
+      }
+      if (!doc.justificacion_prestamo && !normalizarTexto(doc.observaciones).includes("justific")) {
+        hallazgos.push({
+          severidad: "media",
+          tipo: "Prestamo sin justificacion",
+          descripcion: `${referenciaAlternativa(doc)} es prestamo, pero no explica para que se pidio ni por que era necesario.`,
+        });
+      }
+      if (numero(doc.interes_porcentaje) > 5) {
+        hallazgos.push({
+          severidad: "alta",
+          tipo: "Interes alto",
+          descripcion: `${referenciaAlternativa(doc)} registra interes de ${doc.interes_porcentaje}%. Revisar acuerdo aprobado y respaldo.`,
+        });
+      }
+    }
+
+    if (esVentaOro(doc)) {
+      const cantidad = numero(doc.cantidad);
+      const ingresoVenta = ingreso || numero(doc.monto_ingreso);
+      const precioUnitario = numero(doc.precio_unitario) || (cantidad > 0 ? ingresoVenta / cantidad : 0);
+      const precioReferencia = numero(doc.precio_referencia);
+
+      if (cantidad <= 0) {
+        hallazgos.push({
+          severidad: "alta",
+          tipo: "Venta de oro sin peso",
+          descripcion: `${referenciaAlternativa(doc)} parece venta de oro, pero no tiene cantidad/peso registrado.`,
+        });
+      }
+      if (!doc.contraparte && !doc.persona) {
+        hallazgos.push({
+          severidad: "media",
+          tipo: "Venta de oro sin comprador",
+          descripcion: `${referenciaAlternativa(doc)} no indica comprador o contraparte.`,
+        });
+      }
+      if (precioUnitario <= 0) {
+        hallazgos.push({
+          severidad: "media",
+          tipo: "Venta de oro sin precio unitario",
+          descripcion: `${referenciaAlternativa(doc)} no permite saber a cuanto se vendio cada unidad de oro.`,
+        });
+      }
+      if (precioReferencia > 0 && precioUnitario > 0) {
+        const diferenciaPorcentaje = ((precioUnitario - precioReferencia) / precioReferencia) * 100;
+        if (diferenciaPorcentaje < -TOLERANCIA_PRECIO_ORO_ALTA) {
+          hallazgos.push({
+            severidad: "alta",
+            tipo: "Precio de oro bajo",
+            descripcion: `${referenciaAlternativa(doc)} se vendio a ${moneda(precioUnitario)} por unidad, ${Math.abs(
+              diferenciaPorcentaje
+            ).toFixed(2)}% por debajo de la referencia ${moneda(precioReferencia)}.`,
+          });
+        } else if (diferenciaPorcentaje < -TOLERANCIA_PRECIO_ORO_MEDIA) {
+          hallazgos.push({
+            severidad: "media",
+            tipo: "Precio de oro por revisar",
+            descripcion: `${referenciaAlternativa(doc)} esta ${Math.abs(diferenciaPorcentaje).toFixed(
+              2
+            )}% por debajo de la referencia cargada.`,
+          });
+        }
+      }
+    }
+
     if (recibo) {
       porRecibo.set(recibo, [...(porRecibo.get(recibo) || []), doc]);
     }
     if (folio) {
       const clave = `${doc.tipo_documento}:${mesGestion(doc.fecha_documento)}:${folio}`;
       porFolioMes.set(clave, [...(porFolioMes.get(clave) || []), doc]);
+    }
+    const reciboNumero = Number.parseInt(recibo, 10);
+    if (Number.isInteger(reciboNumero) && reciboNumero > 0) {
+      const claveTipoMes = `${doc.tipo_documento}:${mesGestion(doc.fecha_documento)}`;
+      porTipoMes.set(claveTipoMes, [...(porTipoMes.get(claveTipoMes) || []), reciboNumero]);
     }
   });
 
@@ -395,6 +600,85 @@ function detectarAnomalias(documentos) {
         });
       }
     });
+  });
+
+  porTipoMes.forEach((numeros, clave) => {
+    const unicos = [...new Set(numeros)].sort((a, b) => a - b);
+    if (unicos.length < 5) return;
+
+    const saltos = [];
+    for (let i = 1; i < unicos.length; i += 1) {
+      const diferencia = unicos[i] - unicos[i - 1];
+      if (diferencia > 10) saltos.push(`${unicos[i - 1]} a ${unicos[i]}`);
+    }
+
+    if (saltos.length) {
+      hallazgos.push({
+        severidad: "media",
+        tipo: "Saltos en recibos",
+        descripcion: `${clave.replaceAll(":", " / ")} tiene saltos grandes en numeracion: ${saltos
+          .slice(0, 4)
+          .join(", ")}. Revisar si faltan hojas o recibos no cargados.`,
+      });
+    }
+  });
+
+  const ordenados = [...documentos].sort((a, b) => {
+    const fechaA = a.fecha_documento || "9999-12-31";
+    const fechaB = b.fecha_documento || "9999-12-31";
+    if (fechaA !== fechaB) return fechaA.localeCompare(fechaB);
+    return String(a.created_at || "").localeCompare(String(b.created_at || ""));
+  });
+
+  let saldoCaja = 0;
+  let cajaReconstruible = ordenados.some((doc) => numero(doc.monto_ingreso) > 0 || opcionalNumero(doc.saldo_caja_antes) !== null);
+  let cajaNegativaReportada = false;
+  if (!cajaReconstruible && ordenados.some((doc) => numero(doc.monto_egreso) > 0)) {
+    hallazgos.push({
+      severidad: "media",
+      tipo: "Caja incompleta",
+      descripcion:
+        "Hay egresos cargados, pero faltan ingresos o saldo inicial para saber si la caja tenia efectivo suficiente.",
+    });
+  }
+
+  ordenados.forEach((doc) => {
+    const ingreso = numero(doc.monto_ingreso);
+    const egreso = numero(doc.monto_egreso);
+    const saldoInformado = opcionalNumero(doc.saldo_caja_antes);
+    if (saldoInformado !== null) {
+      saldoCaja = saldoInformado;
+      cajaReconstruible = true;
+    }
+    const saldoAntes = saldoCaja;
+
+    if (esPrestamo(doc) && ingreso > 0) {
+      const saldoParaEvaluar = saldoInformado ?? saldoAntes;
+      if (saldoParaEvaluar >= ingreso || saldoParaEvaluar >= UMBRAL_CAJA_PRESTAMO_INNECESARIO) {
+        hallazgos.push({
+          severidad: "alta",
+          tipo: "Prestamo posiblemente innecesario",
+          descripcion: `${referenciaAlternativa(doc)} pidio prestamo por ${moneda(
+            ingreso
+          )}, pero la caja antes figuraba con ${moneda(
+            saldoParaEvaluar
+          )}. Revisar si habia deuda urgente, compra aprobada o motivo real.`,
+        });
+      }
+    }
+
+    saldoCaja += ingreso - egreso;
+
+    if (cajaReconstruible && saldoCaja < -0.01 && !cajaNegativaReportada) {
+      cajaNegativaReportada = true;
+      hallazgos.push({
+        severidad: "alta",
+        tipo: "Caja negativa",
+        descripcion: `Despues de ${referenciaAlternativa(doc)} la caja calculada queda en ${moneda(
+          saldoCaja
+        )}. Falta ingreso, saldo inicial o hay egreso mal registrado.`,
+      });
+    }
   });
 
   porFolioMes.forEach((items) => {
@@ -529,6 +813,16 @@ export default function ComisionRevisoraPage() {
     const ingresos = documentos.reduce((total, doc) => total + numero(doc.monto_ingreso), 0);
     const egresos = documentos.reduce((total, doc) => total + numero(doc.monto_egreso), 0);
     const rendido = documentos.reduce((total, doc) => total + numero(doc.monto_rendido), 0);
+    const prestamos = documentos
+      .filter((doc) => esPrestamo(doc))
+      .reduce((total, doc) => total + montoPrincipal(doc), 0);
+    const ventasOro = documentos
+      .filter((doc) => esVentaOro(doc))
+      .reduce((total, doc) => total + numero(doc.monto_ingreso), 0);
+    const respaldosPorDocumento = new Set(respaldos.map((respaldo) => respaldo.documento_id).filter(Boolean));
+    const sinRespaldo = documentos.filter(
+      (doc) => necesitaRespaldo(doc) && !respaldosPorDocumento.has(doc.id)
+    ).length;
 
     return {
       ingresos,
@@ -537,10 +831,17 @@ export default function ComisionRevisoraPage() {
       saldoCaja: ingresos - egresos,
       documentos: documentos.length,
       respaldos: respaldos.length,
+      prestamos,
+      ventasOro,
+      sinRespaldo,
     };
   }, [documentos, respaldos]);
 
-  const anomalias = useMemo(() => detectarAnomalias(documentos), [documentos]);
+  const anomalias = useMemo(() => detectarAnomalias(documentos, respaldos), [documentos, respaldos]);
+  const alertasAltas = useMemo(
+    () => anomalias.filter((anomalia) => anomalia.severidad === "alta").length,
+    [anomalias]
+  );
 
   const avisosRevisionDocumento = useMemo(() => {
     if (!revisionDocumento) return [];
@@ -683,6 +984,20 @@ export default function ComisionRevisoraPage() {
         item: limpiarDatoIa(resultado.item) || form.item,
         contraparte: limpiarDatoIa(resultado.contraparte) || form.contraparte,
         interes_porcentaje: resultado.interes_porcentaje ?? form.interes_porcentaje,
+        precio_unitario: resultado.precio_unitario ?? form.precio_unitario,
+        precio_referencia: resultado.precio_referencia ?? form.precio_referencia,
+        diferencia_precio: resultado.diferencia_precio ?? form.diferencia_precio,
+        porcentaje_diferencia_precio:
+          resultado.porcentaje_diferencia_precio ?? form.porcentaje_diferencia_precio,
+        ley_oro: limpiarDatoIa(resultado.ley_oro) || form.ley_oro,
+        moneda: limpiarDatoIa(resultado.moneda) || form.moneda,
+        tipo_cambio: resultado.tipo_cambio ?? form.tipo_cambio,
+        saldo_caja_antes: resultado.saldo_caja_antes ?? form.saldo_caja_antes,
+        justificacion_prestamo: limpiarDatoIa(resultado.justificacion_prestamo) || form.justificacion_prestamo,
+        requiere_respaldo:
+          typeof resultado.requiere_respaldo === "boolean"
+            ? resultado.requiere_respaldo
+            : form.requiere_respaldo,
         saldo_a_favor: resultado.saldo_a_favor ?? form.saldo_a_favor,
         saldo_en_contra: resultado.saldo_en_contra ?? form.saldo_en_contra,
         texto_extraido: limpiarDatoIa(resultado.texto_extraido) || form.texto_extraido,
@@ -789,6 +1104,16 @@ export default function ComisionRevisoraPage() {
         item: form.item.trim() || null,
         contraparte: form.contraparte.trim() || null,
         interes_porcentaje: opcionalNumero(form.interes_porcentaje),
+        precio_unitario: opcionalNumero(form.precio_unitario),
+        precio_referencia: opcionalNumero(form.precio_referencia),
+        diferencia_precio: opcionalNumero(form.diferencia_precio),
+        porcentaje_diferencia_precio: opcionalNumero(form.porcentaje_diferencia_precio),
+        ley_oro: form.ley_oro.trim() || null,
+        moneda: form.moneda.trim() || "BOB",
+        tipo_cambio: opcionalNumero(form.tipo_cambio),
+        saldo_caja_antes: opcionalNumero(form.saldo_caja_antes),
+        justificacion_prestamo: form.justificacion_prestamo.trim() || null,
+        requiere_respaldo: Boolean(form.requiere_respaldo),
         saldo_a_favor: numero(form.saldo_a_favor),
         saldo_en_contra: numero(form.saldo_en_contra),
         url_imagen: urlImagen,
@@ -797,8 +1122,18 @@ export default function ComisionRevisoraPage() {
         observaciones: form.observaciones.trim() || null,
       };
 
-      const { error } = await supabase.from("comision_documentos").insert([payload]);
-      if (error) throw error;
+      await insertarConFallback("comision_documentos", payload, [
+        "precio_unitario",
+        "precio_referencia",
+        "diferencia_precio",
+        "porcentaje_diferencia_precio",
+        "ley_oro",
+        "moneda",
+        "tipo_cambio",
+        "saldo_caja_antes",
+        "justificacion_prestamo",
+        "requiere_respaldo",
+      ]);
 
       setForm(FORM_INICIAL);
       setFoto(null);
@@ -1022,14 +1357,25 @@ export default function ComisionRevisoraPage() {
 
     setGuardando(true);
     try {
-      const nombreArchivo = `${gestionSeleccionada}/respaldos/${Date.now()}_${fotoRespaldo.name.replace(/\s+/g, "_")}`;
+      const hashArchivo = await calcularSha256Archivo(fotoRespaldo);
+      const movimiento = documentos.find((doc) => doc.id === respaldoForm.documento_id);
+      const gestionNombre = gestionActual?.gestion || "gestion";
+      const fecha = respaldoForm.fecha_respaldo || movimiento?.fecha_documento || "sin-fecha";
+      const folio = (respaldoForm.folio || movimiento?.folio || "sin-folio").replace(/[^\w.-]+/g, "_");
+      const recibo = (respaldoForm.numero_recibo || movimiento?.numero_recibo || "sin-recibo").replace(
+        /[^\w.-]+/g,
+        "_"
+      );
+      const archivoSeguro = fotoRespaldo.name.replace(/[^\w.-]+/g, "_");
+      const nombreArchivo = `gestion-${gestionNombre}/originales/${respaldoForm.tipo_respaldo}/${fecha}_folio-${folio}_recibo-${recibo}_${Date.now()}_${archivoSeguro}`;
       const { error: uploadError } = await supabase.storage
         .from("comision-revisora")
         .upload(nombreArchivo, fotoRespaldo);
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("comision-revisora").getPublicUrl(nombreArchivo);
-      const { error } = await supabase.from("comision_respaldos").insert([
+      await insertarConFallback(
+        "comision_respaldos",
         {
           gestion_id: gestionSeleccionada,
           documento_id: respaldoForm.documento_id,
@@ -1041,14 +1387,29 @@ export default function ComisionRevisoraPage() {
           detalle: respaldoForm.detalle || null,
           monto: opcionalNumero(respaldoForm.monto),
           url_archivo: urlData.publicUrl,
+          storage_path: nombreArchivo,
+          nombre_archivo: fotoRespaldo.name,
+          mime_type: fotoRespaldo.type || null,
+          tamano_bytes: fotoRespaldo.size || null,
+          sha256: hashArchivo,
+          estado_custodia: "original_digital",
+          subido_por: "comision_revisora",
           texto_extraido: respaldoForm.texto_extraido || null,
           resultado_verificacion: respaldoForm.resultado_verificacion,
           diferencias: respaldoForm.diferencias || [],
           confianza: opcionalNumero(respaldoForm.confianza),
           observaciones: respaldoForm.observaciones || null,
         },
-      ]);
-      if (error) throw error;
+        [
+          "storage_path",
+          "nombre_archivo",
+          "mime_type",
+          "tamano_bytes",
+          "sha256",
+          "estado_custodia",
+          "subido_por",
+        ]
+      );
 
       setRespaldoForm(RESPALDO_INICIAL);
       setFotoRespaldo(null);
@@ -1124,7 +1485,7 @@ export default function ComisionRevisoraPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-8">
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-sm text-slate-500">Documentos</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{resumen.documentos}</p>
@@ -1144,8 +1505,45 @@ export default function ComisionRevisoraPage() {
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-sm text-slate-500">Respaldos fisicos</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{resumen.respaldos}</p>
+            <p className="mt-1 text-xs font-semibold text-amber-700">Faltan: {resumen.sinRespaldo}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Prestamos</p>
+            <p className="mt-1 text-2xl font-bold text-orange-700">{moneda(resumen.prestamos)}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Ventas oro</p>
+            <p className="mt-1 text-2xl font-bold text-amber-700">{moneda(resumen.ventasOro)}</p>
+          </div>
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-600">Alertas altas</p>
+            <p className="mt-1 text-2xl font-bold text-red-700">{alertasAltas}</p>
           </div>
         </div>
+
+        <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+          <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                Revision experta
+              </p>
+              <h2 className="mt-1 text-lg font-black text-slate-950">Que debe cuadrar si o si</h2>
+              <p className="mt-2 text-sm font-semibold text-slate-600">
+                Caja, oro, prestamos y respaldos deben contar la misma historia desde distintos libros.
+              </p>
+            </div>
+            <ul className="space-y-2 text-sm font-semibold text-slate-700">
+              <li>- Venta de oro: peso, ley, comprador, precio unitario y precio de referencia.</li>
+              <li>- Caja: saldo antes y despues; si habia plata, justificar por que se pidio prestamo.</li>
+              <li>- Prestamos: acreedor, interes, plazo, moneda de devolucion y acta o autorizacion.</li>
+            </ul>
+            <ul className="space-y-2 text-sm font-semibold text-slate-700">
+              <li>- Recibos: sin duplicados raros, sin saltos grandes y con folio/fecha consistentes.</li>
+              <li>- Respaldos: foto original vinculada al movimiento y verificada con IA.</li>
+              <li>- Almacen: compras de insumos con ingreso fisico o sello del almacenero.</li>
+            </ul>
+          </div>
+        </section>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[420px_1fr]">
           <div className="space-y-6">
@@ -1355,6 +1753,74 @@ export default function ComisionRevisoraPage() {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     placeholder="Saldo libro"
                   />
+                </div>
+
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-amber-800">
+                    Venta de oro, prestamo y caja
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={form.precio_unitario}
+                      onChange={(e) => setForm((f) => ({ ...f, precio_unitario: e.target.value }))}
+                      className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      placeholder="Precio unitario oro"
+                    />
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={form.precio_referencia}
+                      onChange={(e) => setForm((f) => ({ ...f, precio_referencia: e.target.value }))}
+                      className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      placeholder="Precio referencia"
+                    />
+                    <input
+                      value={form.ley_oro}
+                      onChange={(e) => setForm((f) => ({ ...f, ley_oro: e.target.value }))}
+                      className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      placeholder="Ley/pureza oro"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.saldo_caja_antes}
+                      onChange={(e) => setForm((f) => ({ ...f, saldo_caja_antes: e.target.value }))}
+                      className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      placeholder="Caja antes del prestamo"
+                    />
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={form.interes_porcentaje}
+                      onChange={(e) => setForm((f) => ({ ...f, interes_porcentaje: e.target.value }))}
+                      className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      placeholder="Interes %"
+                    />
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={form.tipo_cambio}
+                      onChange={(e) => setForm((f) => ({ ...f, tipo_cambio: e.target.value }))}
+                      className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      placeholder="Tipo cambio si aplica"
+                    />
+                  </div>
+                  <textarea
+                    value={form.justificacion_prestamo}
+                    onChange={(e) => setForm((f) => ({ ...f, justificacion_prestamo: e.target.value }))}
+                    className="mt-3 min-h-16 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                    placeholder="Justificacion del prestamo o diferencia de precio"
+                  />
+                  <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-amber-900">
+                    <input
+                      type="checkbox"
+                      checked={form.requiere_respaldo}
+                      onChange={(e) => setForm((f) => ({ ...f, requiere_respaldo: e.target.checked }))}
+                    />
+                    Este movimiento debe tener respaldo fisico
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1845,6 +2311,7 @@ export default function ComisionRevisoraPage() {
                       <th className="px-4 py-3">Ingreso</th>
                       <th className="px-4 py-3">Egreso</th>
                       <th className="px-4 py-3">Cantidad</th>
+                      <th className="px-4 py-3">Precio oro</th>
                       <th className="px-4 py-3">Respaldos</th>
                     </tr>
                   </thead>
@@ -1893,13 +2360,25 @@ export default function ComisionRevisoraPage() {
                           {doc.cantidad ? `${doc.cantidad} ${doc.unidad || ""}` : "-"}
                         </td>
                         <td className="px-4 py-3 text-slate-600">
+                          {doc.precio_unitario || doc.precio_referencia ? (
+                            <>
+                              <p>Venta: {doc.precio_unitario ? moneda(doc.precio_unitario) : "s/d"}</p>
+                              <p className="text-xs text-slate-500">
+                                Ref: {doc.precio_referencia ? moneda(doc.precio_referencia) : "s/d"}
+                              </p>
+                            </>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
                           {respaldos.filter((respaldo) => respaldo.documento_id === doc.id).length}
                         </td>
                       </tr>
                     ))}
                     {documentos.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
+                        <td colSpan={10} className="px-4 py-10 text-center text-slate-500">
                           Todavia no hay documentos cargados para esta gestion.
                         </td>
                       </tr>

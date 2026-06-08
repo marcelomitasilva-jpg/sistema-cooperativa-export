@@ -24,6 +24,14 @@ Devuelve solo JSON plano:
   "persona": "",
   "detalle": "",
   "monto": 0,
+  "cantidad": null,
+  "unidad": "",
+  "precio_unitario": null,
+  "precio_referencia": null,
+  "ley_oro": "",
+  "interes_porcentaje": null,
+  "plazo": "",
+  "condicion_devolucion": "",
   "texto_extraido": "transcripcion resumida del respaldo",
   "diferencias": [
     { "campo": "monto", "movimiento": "350", "respaldo": "320", "detalle": "explicacion breve" }
@@ -34,6 +42,8 @@ Devuelve solo JSON plano:
 
 Reglas:
 - Verifica fecha, monto, detalle, numero de recibo, folio y persona si son visibles.
+- Si es venta de oro, verifica peso/cantidad, unidad, ley o pureza, comprador, precio unitario y precio de referencia si aparecen.
+- Si es prestamo, verifica acreedor, monto, interes, plazo, condicion de devolucion en oro o bolivianos y motivo del prestamo si aparecen.
 - Si el recibo no muestra un dato, no lo inventes.
 - Si coincide por monto y detalle aunque falte recibo, usa requiere_revision y explica.
 - Si es ilegible, usa respaldo_ilegible.`;

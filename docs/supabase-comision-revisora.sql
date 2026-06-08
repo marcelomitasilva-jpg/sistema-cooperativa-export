@@ -128,6 +128,16 @@ alter table public.comision_documentos
   add column if not exists responsable text,
   add column if not exists destino text,
   add column if not exists tarea text,
+  add column if not exists precio_unitario numeric(14,4),
+  add column if not exists precio_referencia numeric(14,4),
+  add column if not exists diferencia_precio numeric(14,4),
+  add column if not exists porcentaje_diferencia_precio numeric(8,4),
+  add column if not exists ley_oro text,
+  add column if not exists moneda text not null default 'BOB',
+  add column if not exists tipo_cambio numeric(14,4),
+  add column if not exists saldo_caja_antes numeric(14,2),
+  add column if not exists justificacion_prestamo text,
+  add column if not exists requiere_respaldo boolean not null default true,
   add column if not exists saldo_a_favor numeric(14,2) not null default 0,
   add column if not exists saldo_en_contra numeric(14,2) not null default 0,
   add column if not exists lote_carga_id uuid null;
@@ -154,10 +164,38 @@ create table if not exists public.comision_respaldos (
   detalle text,
   monto numeric(14,2),
   url_archivo text not null,
+  storage_path text,
+  nombre_archivo text,
+  mime_type text,
+  tamano_bytes bigint,
+  sha256 text,
+  estado_custodia text not null default 'original_digital',
+  subido_por text,
   texto_extraido text,
   resultado_verificacion text not null default 'pendiente',
   diferencias jsonb not null default '[]'::jsonb,
   confianza numeric(5,2),
+  observaciones text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.comision_respaldos
+  add column if not exists storage_path text,
+  add column if not exists nombre_archivo text,
+  add column if not exists mime_type text,
+  add column if not exists tamano_bytes bigint,
+  add column if not exists sha256 text,
+  add column if not exists estado_custodia text not null default 'original_digital',
+  add column if not exists subido_por text;
+
+create table if not exists public.comision_precios_oro_referencia (
+  id uuid primary key default gen_random_uuid(),
+  gestion_id uuid references public.comision_gestiones(id) on delete cascade,
+  fecha_precio date not null,
+  fuente text not null,
+  precio_gramo_bob numeric(14,4),
+  precio_onza_usd numeric(14,4),
+  tipo_cambio numeric(14,4),
   observaciones text,
   created_at timestamptz not null default now()
 );
@@ -201,9 +239,17 @@ create index if not exists idx_comision_respaldos_referencia
 create index if not exists idx_comision_documentos_lote
   on public.comision_documentos(lote_carga_id);
 
+create index if not exists idx_comision_documentos_oro
+  on public.comision_documentos(gestion_id, fecha_documento, tipo_documento)
+  where tipo_documento = 'ventas_oro';
+
+create index if not exists idx_comision_precios_oro_fecha
+  on public.comision_precios_oro_referencia(gestion_id, fecha_precio);
+
 alter table public.comision_lotes_carga enable row level security;
 alter table public.comision_respaldos enable row level security;
 alter table public.comision_rubros enable row level security;
+alter table public.comision_precios_oro_referencia enable row level security;
 
 drop policy if exists dev_comision_lotes_carga_all on public.comision_lotes_carga;
 create policy dev_comision_lotes_carga_all
@@ -229,6 +275,15 @@ create policy dev_comision_rubros_all
   using (true)
   with check (true);
 
+drop policy if exists dev_comision_precios_oro_referencia_all on public.comision_precios_oro_referencia;
+create policy dev_comision_precios_oro_referencia_all
+  on public.comision_precios_oro_referencia
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
+
 grant all on public.comision_lotes_carga to anon, authenticated;
 grant all on public.comision_respaldos to anon, authenticated;
 grant all on public.comision_rubros to anon, authenticated;
+grant all on public.comision_precios_oro_referencia to anon, authenticated;
