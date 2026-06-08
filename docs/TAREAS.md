@@ -177,10 +177,30 @@ _(Agregar ideas nuevas aquí)_
 - [x] Crear OCR especializado para libros, recibos, folios, caja, almacen, alzas y ventas de oro.
 - [x] Crear cruces iniciales: recibos duplicados, folios repetidos, documentos sin referencia y rendiciones descuadradas.
 - [x] Ejecutar `docs/supabase-comision-revisora.sql` en Supabase.
-- [ ] Separar libros por flujo: caja, almacen, alzas, ventas de oro y prestamos.
-- [ ] Crear conciliacion avanzada: caja vs recibos fisicos, almacen vs compras, alzas vs ventas, prestamos vs pagos.
-- [ ] Generar informe imprimible para la comision revisora.
-- [ ] Agregar estado de revision por observacion: pendiente, aclarado, observado, aprobado.
+- [ ] **P1** Crear ficha de revision por movimiento: documento principal, respaldo fisico, caja, almacen, socio/proveedor, oro/produccion, observaciones y conclusion.
+- [ ] **P1** Separar libros por flujo: caja, egresos, ingresos, almacen, alzas/produccion, ventas de oro, prestamos y rendiciones.
+- [ ] **P1** Crear matriz de cruce documental: libro contra respaldo fisico, caja, almacen, socio/proveedor y oro/produccion.
+- [ ] **P1** Crear conciliacion mensual de caja: saldo inicial, ingresos, egresos, saldo final calculado, saldo segun libro y diferencia.
+- [ ] **P1** Crear submodulo de prestamos revisora: acreedor, tipo de prestamo, monto, oro, interes, plazo, devolucion, pagos, saldo, autorizacion y justificacion.
+- [ ] **P1** Mejorar revision de venta de oro: peso bruto, ley/pureza, oro fino, merma, comprador, precio unitario, precio referencia, comisionados y entrada a caja.
+- [ ] **P1** Crear cruce almacen: compra segun caja, respaldo fisico, ingreso fisico, salida, saldo final, responsable y lugar de uso Mina/Tujo/Rio.
+- [ ] **P1** Crear flujo formal de observaciones: pendiente, en revision, requiere respaldo, requiere aclaracion, subsanado, observado final y sin observacion.
+- [ ] **P1** Crear informe imprimible para comision revisora/asamblea: resumen, diferencias, respaldos faltantes, prestamos, oro, almacen, rendiciones y recomendaciones.
+- [ ] **P1** Guardar historial de correcciones IA: lectura original, correccion del usuario, fecha, usuario y motivo.
+- [ ] **P2** Mejorar duplicados avanzados: mismo monto/proveedor/fecha cercana, texto parecido, respaldo reutilizado por hash y recibos sin numero comparados por fecha-folio-monto.
+- [ ] **P2** Crear tablero de anomalias por severidad, rubro, persona, mes, libro y estado de revision.
+- [ ] **P2** Crear cuenta corriente de rendiciones/viaticos dentro de revisora: recibido, rendido, saldo, destino, acompanantes y dias sin rendir.
+- [ ] **P2** Crear expediente digital por movimiento con todos los respaldos, cambios, observaciones y conclusion final.
+- [ ] **P3** Implementar respaldo externo/inmutable para recibos importantes: Supabase Storage como trabajo y copia tipo Object Lock cuando haya presupuesto.
+
+### Procedimiento propuesto para completar Comision Revisora
+
+1. **Base de datos primero:** ampliar SQL para fichas de revision, observaciones, conciliaciones mensuales, prestamos, ventas de oro y cruces de almacen.
+2. **Pantalla de trabajo:** convertir `/comision-revisora` en una mesa de revision con pestañas: Cargar, Fichas, Caja, Prestamos, Oro, Almacen, Observaciones e Informe.
+3. **Cruces automaticos:** calcular alertas por caja, duplicados, respaldos, oro, prestamos, almacen y rendiciones.
+4. **Revision humana:** permitir que la comision confirme, corrija, justifique o deje observado cada hallazgo.
+5. **Informe final:** generar reporte imprimible para asamblea con anexos y respaldos visibles.
+6. **Respaldo documental:** asegurar hash, ruta de archivo, usuario, fecha y copia externa para documentos importantes.
 
 ---
 
