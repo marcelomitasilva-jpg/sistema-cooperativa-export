@@ -1552,6 +1552,7 @@ export default function ComisionRevisoraPage() {
         confianza_tipo_lote: resultado.confianza_tipo_lote || "media",
         columnas_detectadas: columnasDetectadas,
         titulo: resultado.titulo || "",
+        analisis_tabla: resultado.analisis_tabla || null,
         resumen: resultado.resumen || null,
         observaciones: resultado.observaciones_pagina || resultado.resumen?.observaciones_generales || "",
       });
@@ -2549,6 +2550,26 @@ export default function ComisionRevisoraPage() {
                               .filter(Boolean)
                               .join(", ")}
                           </p>
+                        ) : null}
+                        {loteTablaDetectado.analisis_tabla ? (
+                          <div className="mt-2 rounded-md border border-indigo-200 bg-white/70 p-2 text-xs">
+                            <p className="font-bold text-indigo-950">Analisis previo de la IA</p>
+                            <p className="mt-1">
+                              Orientacion:{" "}
+                              {loteTablaDetectado.analisis_tabla.orientacion_imagen || "no indicada"} | Filas
+                              visibles: {loteTablaDetectado.analisis_tabla.filas_visibles_estimadas ?? "-"} |
+                              Filas extraidas: {loteTablaDetectado.analisis_tabla.filas_extraidas ?? "-"}
+                            </p>
+                            {loteTablaDetectado.analisis_tabla.criterio_extraccion ? (
+                              <p className="mt-1">{loteTablaDetectado.analisis_tabla.criterio_extraccion}</p>
+                            ) : null}
+                            {Array.isArray(loteTablaDetectado.analisis_tabla.riesgos_lectura) &&
+                            loteTablaDetectado.analisis_tabla.riesgos_lectura.length ? (
+                              <p className="mt-1 font-semibold text-amber-800">
+                                Revisar: {loteTablaDetectado.analisis_tabla.riesgos_lectura.join("; ")}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : null}
                         {loteTablaDetectado.observaciones ? (
                           <p className="mt-1 text-xs">{loteTablaDetectado.observaciones}</p>
