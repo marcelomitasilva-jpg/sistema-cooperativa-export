@@ -292,6 +292,10 @@ function rubroDesdeLote(tipoLote, fila = {}) {
 
 function normalizarClaveColumna(valor) {
   const texto = normalizarTexto(valor).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (/^(n|no|nro|num|numero|fila|renglon|row)$/.test(texto)) return "";
+  if (texto.includes("tujo") && (texto.includes("gr") || texto.includes("gram"))) return "tujo_gr";
+  if (texto.includes("mina") && (texto.includes("gr") || texto.includes("gram"))) return "mina_gr";
+  if (texto === "bs_bs") return "monto_ingreso";
   const mapa = {
     fecha: "fecha_documento",
     dia: "fecha_documento",
@@ -340,6 +344,8 @@ function normalizarClaveColumna(valor) {
     saldo: "saldo_libro",
     observacion: "observaciones",
     observaciones: "observaciones",
+    tujo_gr: "tujo_gr",
+    mina_gr: "mina_gr",
   };
   return mapa[texto] || texto;
 }
@@ -356,6 +362,8 @@ function columnaPorClave(key, label) {
     { key: "interes_porcentaje", label: "Interes %", type: "number", width: "w-24", step: "0.0001" },
     { key: "saldo_a_favor", label: "A favor", type: "number", width: "w-28", step: "0.01" },
     { key: "saldo_en_contra", label: "En contra", type: "number", width: "w-28", step: "0.01" },
+    { key: "tujo_gr", label: "Tujo (gr)", type: "number", width: "w-28", step: "0.0001" },
+    { key: "mina_gr", label: "Mina (gr)", type: "number", width: "w-28", step: "0.0001" },
   ];
   const encontrada = catalogo.find((columna) => columna.key === key);
   return {
@@ -383,6 +391,93 @@ function columnasDesdeDetectadas(columnasDetectadas) {
       vistas.add(columna.key);
       return true;
     });
+}
+
+function camposDinamicosFila(fila, columnasDetectadas = []) {
+  const camposReservados = new Set([
+    "fila",
+    "numero_fila_visual",
+    "fecha",
+    "fecha_original",
+    "detalle",
+    "concepto",
+    "monto_bs",
+    "monto_egreso",
+    "monto_ingreso",
+    "monto_rendido",
+    "numero_recibo",
+    "folio",
+    "numero_folio",
+    "persona",
+    "observaciones",
+    "rubro",
+    "subrubro",
+    "responsable",
+    "destino",
+    "tarea",
+    "cantidad",
+    "unidad",
+    "item",
+    "contraparte",
+    "precio_unitario",
+    "precio_referencia",
+    "ley_oro",
+    "interes_porcentaje",
+    "saldo_libro",
+    "saldo_a_favor",
+    "saldo_en_contra",
+    "tipo_movimiento",
+    "confianza",
+    "confianza_numerica",
+    "dudas",
+    "campos_dudosos",
+  ]);
+  const dinamicos = {};
+
+  columnasDetectadas.forEach((columna) => {
+    const original =
+      typeof columna === "string"
+        ? columna
+        : columna.original || columna.label || columna.key || columna.nombre || columna.titulo;
+    const key = normalizarClaveColumna(typeof columna === "string" ? columna : columna.key || original);
+    if (key && fila[key] !== undefined) dinamicos[key] = fila[key];
+  });
+
+  Object.entries(fila).forEach(([key, value]) => {
+    const keyNormalizada = normalizarClaveColumna(key);
+    if (!keyNormalizada || camposReservados.has(keyNormalizada) || value === undefined) return;
+    dinamicos[keyNormalizada] = value;
+  });
+
+  return dinamicos;
+}
+
+function camposDinamicosParaGuardar(fila, columnasRevision = []) {
+  const dinamicos = camposDinamicosFila(fila, columnasRevision);
+  return Object.fromEntries(
+    Object.entries(dinamicos).filter(([, value]) => value !== "" && value !== null && value !== undefined)
+  );
+}
+
+function resumenCamposDinamicos(fila, columnasRevision = []) {
+  const dinamicos = camposDinamicosParaGuardar(fila, columnasRevision);
+  const etiquetas = new Map(columnasRevision.map((columna) => [columna.key, columna.label || columna.key]));
+  return Object.entries(dinamicos)
+    .map(([key, value]) => `${etiquetas.get(key) || key}: ${value}`)
+    .join(" | ");
+}
+
+function cantidadDesdeFilaExtraida(fila) {
+  const directa = opcionalNumero(fila.cantidad);
+  if (directa !== null) return directa;
+
+  const cantidadesPorArea = Object.entries(camposDinamicosParaGuardar(fila))
+    .filter(([key]) => key.endsWith("_gr") || key.endsWith("_gramos"))
+    .map(([, value]) => opcionalNumero(value))
+    .filter((value) => value !== null);
+
+  if (!cantidadesPorArea.length) return null;
+  return cantidadesPorArea.reduce((total, value) => total + value, 0);
 }
 
 function columnasParaLote(tipoLote) {
@@ -1449,12 +1544,13 @@ export default function ComisionRevisoraPage() {
       const tipoParaFilas = tipoFuenteTabla === "auto" ? tipoDetectado : tipoFuenteTabla;
       const tipoDocumentoBase = tipoDocumentoDesdeLote(tipoParaFilas);
       const movimientoBase = movimientoDesdeLote(tipoParaFilas);
+      const columnasDetectadas = resultado.columnas_detectadas || [];
 
       setLoteTablaDetectado({
         tipo_lote_solicitado: resultado.tipo_lote_solicitado || tipoFuenteTabla,
         tipo_lote_detectado: tipoParaFilas,
         confianza_tipo_lote: resultado.confianza_tipo_lote || "media",
-        columnas_detectadas: resultado.columnas_detectadas || [],
+        columnas_detectadas: columnasDetectadas,
         titulo: resultado.titulo || "",
         resumen: resultado.resumen || null,
         observaciones: resultado.observaciones_pagina || resultado.resumen?.observaciones_generales || "",
@@ -1462,6 +1558,7 @@ export default function ComisionRevisoraPage() {
 
       setFilasExtraidas(
         (resultado.filas || []).map((fila, index) => ({
+          ...camposDinamicosFila(fila, columnasDetectadas),
           id_temporal: `${Date.now()}-${index}`,
           tipo_lote: tipoParaFilas,
           tipo_documento: fila.tipo_documento || tipoDocumentoBase,
@@ -1581,47 +1678,65 @@ export default function ComisionRevisoraPage() {
       }
       if (loteError) throw loteError;
 
-      const payload = filasParaGuardar.map((fila) => ({
-        gestion_id: gestionSeleccionada,
-        lote_carga_id: lote.id,
-        tipo_documento: fila.tipo_documento || tipoFuenteTabla,
-        tipo_movimiento: fila.tipo_movimiento || "egreso",
-        fuente: "tabla_manuscrita_ia",
-        fecha_documento: fila.fecha_documento || null,
-        folio: fila.folio || null,
-        numero_recibo: fila.numero_recibo || null,
-        persona: fila.persona || null,
-        concepto: fila.concepto || "Sin detalle",
-        rubro: fila.rubro || null,
-        subrubro: fila.subrubro || null,
-        responsable: fila.responsable || fila.persona || null,
-        destino: fila.destino || null,
-        tarea: fila.tarea || null,
-        monto_ingreso: numero(fila.monto_ingreso),
-        monto_egreso: numero(fila.monto_egreso),
-        monto_rendido: numero(fila.monto_rendido),
-        saldo_libro: opcionalNumero(fila.saldo_libro),
-        cantidad: opcionalNumero(fila.cantidad),
-        unidad: fila.unidad || null,
-        item: fila.item || null,
-        contraparte: fila.contraparte || null,
-        precio_unitario: opcionalNumero(fila.precio_unitario),
-        precio_referencia: opcionalNumero(fila.precio_referencia),
-        ley_oro: fila.ley_oro || null,
-        interes_porcentaje: opcionalNumero(fila.interes_porcentaje),
-        saldo_a_favor: numero(fila.saldo_a_favor),
-        saldo_en_contra: numero(fila.saldo_en_contra),
-        requiere_respaldo: true,
-        confianza: opcionalNumero(fila.confianza),
-        observaciones: [
-          fila.observaciones,
-          guardarDuplicadosTabla && fila.coincidencias?.length
-            ? "Guardado como repetido justificado por usuario."
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" | ") || null,
-      }));
+      const payload = filasParaGuardar.map((fila) => {
+        const camposDinamicos = camposDinamicosParaGuardar(fila, columnasRevisionLote);
+        const resumenDinamico = resumenCamposDinamicos(fila, columnasRevisionLote);
+        const cantidadExtraida = cantidadDesdeFilaExtraida(fila);
+        const unidadExtraida =
+          fila.unidad || (cantidadExtraida !== null && Object.keys(camposDinamicos).some((key) => key.endsWith("_gr")) ? "gramos" : null);
+
+        return {
+          gestion_id: gestionSeleccionada,
+          lote_carga_id: lote.id,
+          tipo_documento: fila.tipo_documento || tipoFuenteTabla,
+          tipo_movimiento: fila.tipo_movimiento || "egreso",
+          fuente: "tabla_manuscrita_ia",
+          fecha_documento: fila.fecha_documento || null,
+          folio: fila.folio || null,
+          numero_recibo: fila.numero_recibo || null,
+          persona: fila.persona || null,
+          concepto: fila.concepto || "Sin detalle",
+          rubro: fila.rubro || null,
+          subrubro: fila.subrubro || null,
+          responsable: fila.responsable || fila.persona || null,
+          destino: fila.destino || null,
+          tarea: fila.tarea || null,
+          monto_ingreso: numero(fila.monto_ingreso),
+          monto_egreso: numero(fila.monto_egreso),
+          monto_rendido: numero(fila.monto_rendido),
+          saldo_libro: opcionalNumero(fila.saldo_libro),
+          cantidad: cantidadExtraida,
+          unidad: unidadExtraida,
+          item: fila.item || null,
+          contraparte: fila.contraparte || null,
+          precio_unitario: opcionalNumero(fila.precio_unitario),
+          precio_referencia: opcionalNumero(fila.precio_referencia),
+          ley_oro: fila.ley_oro || null,
+          interes_porcentaje: opcionalNumero(fila.interes_porcentaje),
+          saldo_a_favor: numero(fila.saldo_a_favor),
+          saldo_en_contra: numero(fila.saldo_en_contra),
+          requiere_respaldo: true,
+          confianza: opcionalNumero(fila.confianza),
+          texto_extraido: JSON.stringify({
+            tipo_lote: tipoLoteRevision,
+            columnas_detectadas: columnasRevisionLote.map((columna) => ({
+              key: columna.key,
+              label: columna.label,
+            })),
+            campos_dinamicos: camposDinamicos,
+          }),
+          observaciones:
+            [
+              fila.observaciones,
+              resumenDinamico ? `Columnas dinamicas: ${resumenDinamico}` : "",
+              guardarDuplicadosTabla && fila.coincidencias?.length
+                ? "Guardado como repetido justificado por usuario."
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" | ") || null,
+        };
+      });
 
       await insertarMuchosConFallback("comision_documentos", payload, [
         "precio_unitario",
