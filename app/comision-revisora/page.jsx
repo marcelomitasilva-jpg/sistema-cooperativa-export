@@ -480,6 +480,36 @@ function cantidadDesdeFilaExtraida(fila) {
   return cantidadesPorArea.reduce((total, value) => total + value, 0);
 }
 
+function separarNumerosPegadosEnObservaciones(fila, tipoLote) {
+  if (tipoLote !== "alzas_produccion") return fila;
+
+  const observaciones = limpiarDatoIa(fila.observaciones);
+  const inicioNumerico = observaciones.match(/^([\d\s.,:-]+)(?:\s*\|\s*)?(.*)$/);
+  if (!inicioNumerico || !/\d/.test(inicioNumerico[1]) || /[a-z]/i.test(inicioNumerico[1])) return fila;
+
+  const valoresDetectados = inicioNumerico[1].match(/\d+(?:[.,:]\d+)?/g) || [];
+  if (!valoresDetectados.length) return fila;
+
+  const camposDudosos = Array.isArray(fila.campos_dudosos) ? fila.campos_dudosos : [];
+  const valoresSinUbicar = [
+    ...(Array.isArray(fila.valores_sin_ubicar) ? fila.valores_sin_ubicar : []),
+    ...valoresDetectados.map((valor) => valor.replace(",", ".").replace(":", ".")),
+  ];
+
+  return {
+    ...fila,
+    observaciones: limpiarDatoIa(inicioNumerico[2]),
+    valores_sin_ubicar: valoresSinUbicar,
+    campos_dudosos: [...new Set([...camposDudosos, "tujo_gr", "mina_gr", "monto_ingreso"])],
+    dudas: [
+      fila.dudas,
+      `Numeros detectados dentro de Observaciones y separados para revisar: ${valoresSinUbicar.join(", ")}`,
+    ]
+      .filter(Boolean)
+      .join(" | "),
+  };
+}
+
 function columnasParaLote(tipoLote) {
   const especiales = COLUMNAS_POR_LOTE[tipoLote] || COLUMNAS_FALLBACK_LOTE;
   const combinadas = [...COLUMNAS_BASE_LOTE.slice(0, 2), ...especiales, ...COLUMNAS_BASE_LOTE.slice(2)];
@@ -1558,51 +1588,58 @@ export default function ComisionRevisoraPage() {
       });
 
       setFilasExtraidas(
-        (resultado.filas || []).map((fila, index) => ({
-          ...camposDinamicosFila(fila, columnasDetectadas),
-          id_temporal: `${Date.now()}-${index}`,
-          tipo_lote: tipoParaFilas,
-          tipo_documento: fila.tipo_documento || tipoDocumentoBase,
-          tipo_movimiento: fila.tipo_movimiento || movimientoBase,
-          fecha_documento: limpiarDatoIa(fila.fecha_documento || fila.fecha),
-          folio: limpiarDatoIa(fila.folio || fila.numero_folio),
-          numero_recibo: limpiarDatoIa(fila.numero_recibo),
-          persona: limpiarDatoIa(fila.responsable || fila.persona),
-          concepto: limpiarDatoIa(fila.concepto || fila.detalle),
-          rubro: limpiarDatoIa(rubroDesdeLote(tipoParaFilas, fila)),
-          subrubro: limpiarDatoIa(fila.subrubro),
-          responsable: limpiarDatoIa(fila.responsable),
-          destino: limpiarDatoIa(fila.destino),
-          tarea: limpiarDatoIa(fila.tarea),
-          monto_ingreso:
-            fila.monto_ingreso ?? (movimientoBase === "ingreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
-          monto_egreso:
-            fila.monto_egreso ?? (movimientoBase === "egreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
-          monto_rendido: fila.monto_rendido ?? "",
-          saldo_libro: fila.saldo_libro ?? "",
-          cantidad: fila.cantidad ?? "",
-          unidad: limpiarDatoIa(fila.unidad),
-          item: limpiarDatoIa(fila.item),
-          contraparte: limpiarDatoIa(fila.contraparte || fila.comprador || fila.acreedor || fila.deudor),
-          precio_unitario: fila.precio_unitario ?? "",
-          precio_referencia: fila.precio_referencia ?? "",
-          ley_oro: limpiarDatoIa(fila.ley_oro),
-          interes_porcentaje: fila.interes_porcentaje ?? "",
-          saldo_a_favor: fila.saldo_a_favor ?? "",
-          saldo_en_contra: fila.saldo_en_contra ?? "",
-          observaciones: [
-            fila.observaciones,
-            fila.dudas,
-            resultado.tipo_lote_detectado ? `Tipo lote IA: ${etiquetaLote(tipoParaFilas)}` : "",
-            fila.confianza && typeof fila.confianza === "string" ? `Confianza IA: ${fila.confianza}` : "",
-            Array.isArray(fila.campos_dudosos) && fila.campos_dudosos.length
-              ? `Campos dudosos: ${fila.campos_dudosos.join(", ")}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" | "),
-          confianza: confianzaIaANumero(fila.confianza, fila.confianza_numerica) ?? "",
-        }))
+        (resultado.filas || []).map((filaOriginal, index) => {
+          const fila = separarNumerosPegadosEnObservaciones(filaOriginal, tipoParaFilas);
+
+          return {
+            ...camposDinamicosFila(fila, columnasDetectadas),
+            id_temporal: `${Date.now()}-${index}`,
+            tipo_lote: tipoParaFilas,
+            tipo_documento: fila.tipo_documento || tipoDocumentoBase,
+            tipo_movimiento: fila.tipo_movimiento || movimientoBase,
+            fecha_documento: limpiarDatoIa(fila.fecha_documento || fila.fecha),
+            folio: limpiarDatoIa(fila.folio || fila.numero_folio),
+            numero_recibo: limpiarDatoIa(fila.numero_recibo),
+            persona: limpiarDatoIa(fila.responsable || fila.persona),
+            concepto: limpiarDatoIa(fila.concepto || fila.detalle),
+            rubro: limpiarDatoIa(rubroDesdeLote(tipoParaFilas, fila)),
+            subrubro: limpiarDatoIa(fila.subrubro),
+            responsable: limpiarDatoIa(fila.responsable),
+            destino: limpiarDatoIa(fila.destino),
+            tarea: limpiarDatoIa(fila.tarea),
+            monto_ingreso:
+              fila.monto_ingreso ?? (movimientoBase === "ingreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
+            monto_egreso:
+              fila.monto_egreso ?? (movimientoBase === "egreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
+            monto_rendido: fila.monto_rendido ?? "",
+            saldo_libro: fila.saldo_libro ?? "",
+            cantidad: fila.cantidad ?? "",
+            unidad: limpiarDatoIa(fila.unidad),
+            item: limpiarDatoIa(fila.item),
+            contraparte: limpiarDatoIa(fila.contraparte || fila.comprador || fila.acreedor || fila.deudor),
+            precio_unitario: fila.precio_unitario ?? "",
+            precio_referencia: fila.precio_referencia ?? "",
+            ley_oro: limpiarDatoIa(fila.ley_oro),
+            interes_porcentaje: fila.interes_porcentaje ?? "",
+            saldo_a_favor: fila.saldo_a_favor ?? "",
+            saldo_en_contra: fila.saldo_en_contra ?? "",
+            observaciones: [
+              fila.observaciones,
+              Array.isArray(fila.valores_sin_ubicar) && fila.valores_sin_ubicar.length
+                ? `Valores sin ubicar: ${fila.valores_sin_ubicar.join(", ")}`
+                : "",
+              fila.dudas,
+              resultado.tipo_lote_detectado ? `Tipo lote IA: ${etiquetaLote(tipoParaFilas)}` : "",
+              fila.confianza && typeof fila.confianza === "string" ? `Confianza IA: ${fila.confianza}` : "",
+              Array.isArray(fila.campos_dudosos) && fila.campos_dudosos.length
+                ? `Campos dudosos: ${fila.campos_dudosos.join(", ")}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" | "),
+            confianza: confianzaIaANumero(fila.confianza, fila.confianza_numerica) ?? "",
+          };
+        })
       );
       setGuardarDuplicadosTabla(false);
 
