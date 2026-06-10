@@ -290,6 +290,101 @@ function rubroDesdeLote(tipoLote, fila = {}) {
   return fila.rubro || mapa[tipoLote] || "";
 }
 
+function normalizarClaveColumna(valor) {
+  const texto = normalizarTexto(valor).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const mapa = {
+    fecha: "fecha_documento",
+    dia: "fecha_documento",
+    detalle: "concepto",
+    descripcion: "concepto",
+    concepto: "concepto",
+    monto: "monto_egreso",
+    monto_bs: "monto_egreso",
+    bs: "monto_egreso",
+    ingreso: "monto_ingreso",
+    ingresos: "monto_ingreso",
+    egreso: "monto_egreso",
+    egresos: "monto_egreso",
+    rendido: "monto_rendido",
+    recibo: "numero_recibo",
+    nro_recibo: "numero_recibo",
+    numero_recibo: "numero_recibo",
+    num_recibo: "numero_recibo",
+    folio: "folio",
+    nro_folio: "folio",
+    numero_folio: "folio",
+    peso: "cantidad",
+    cantidad: "cantidad",
+    gr: "cantidad",
+    gramos: "cantidad",
+    unidad: "unidad",
+    area: "destino",
+    areas: "destino",
+    lugar: "destino",
+    frente: "destino",
+    trabajo: "destino",
+    destino: "destino",
+    mina: "destino",
+    tujo: "destino",
+    rio: "destino",
+    responsable: "responsable",
+    socio: "persona",
+    persona: "persona",
+    proveedor: "persona",
+    comprador: "contraparte",
+    precio: "precio_unitario",
+    precio_unitario: "precio_unitario",
+    ley: "ley_oro",
+    pureza: "ley_oro",
+    interes: "interes_porcentaje",
+    saldo: "saldo_libro",
+    observacion: "observaciones",
+    observaciones: "observaciones",
+  };
+  return mapa[texto] || texto;
+}
+
+function columnaPorClave(key, label) {
+  const catalogo = [
+    ...COLUMNAS_BASE_LOTE,
+    ...COLUMNAS_FALLBACK_LOTE,
+    ...Object.values(COLUMNAS_POR_LOTE).flat(),
+    { key: "persona", label: "Persona", type: "text", width: "w-44" },
+    { key: "responsable", label: "Responsable", type: "text", width: "w-40" },
+    { key: "contraparte", label: "Contraparte", type: "text", width: "w-44" },
+    { key: "ley_oro", label: "Ley", type: "text", width: "w-24" },
+    { key: "interes_porcentaje", label: "Interes %", type: "number", width: "w-24", step: "0.0001" },
+    { key: "saldo_a_favor", label: "A favor", type: "number", width: "w-28", step: "0.01" },
+    { key: "saldo_en_contra", label: "En contra", type: "number", width: "w-28", step: "0.01" },
+  ];
+  const encontrada = catalogo.find((columna) => columna.key === key);
+  return {
+    ...(encontrada || { key, type: "text", width: "w-36" }),
+    label: label || encontrada?.label || key,
+  };
+}
+
+function columnasDesdeDetectadas(columnasDetectadas) {
+  if (!Array.isArray(columnasDetectadas) || !columnasDetectadas.length) return [];
+
+  const vistas = new Set();
+  return columnasDetectadas
+    .map((columna) => {
+      const original =
+        typeof columna === "string"
+          ? columna
+          : columna.original || columna.label || columna.key || columna.nombre || columna.titulo;
+      const key = normalizarClaveColumna(typeof columna === "string" ? columna : columna.key || original);
+      const label = typeof columna === "string" ? columna : columna.label || original || key;
+      return columnaPorClave(key, label);
+    })
+    .filter((columna) => {
+      if (!columna.key || vistas.has(columna.key)) return false;
+      vistas.add(columna.key);
+      return true;
+    });
+}
+
 function columnasParaLote(tipoLote) {
   const especiales = COLUMNAS_POR_LOTE[tipoLote] || COLUMNAS_FALLBACK_LOTE;
   const combinadas = [...COLUMNAS_BASE_LOTE.slice(0, 2), ...especiales, ...COLUMNAS_BASE_LOTE.slice(2)];
@@ -1073,7 +1168,10 @@ export default function ComisionRevisoraPage() {
   );
 
   const tipoLoteRevision = loteTablaDetectado?.tipo_lote_detectado || tipoFuenteTabla;
-  const columnasRevisionLote = useMemo(() => columnasParaLote(tipoLoteRevision), [tipoLoteRevision]);
+  const columnasRevisionLote = useMemo(() => {
+    const columnasDetectadas = columnasDesdeDetectadas(loteTablaDetectado?.columnas_detectadas);
+    return columnasDetectadas.length ? columnasDetectadas : columnasParaLote(tipoLoteRevision);
+  }, [loteTablaDetectado?.columnas_detectadas, tipoLoteRevision]);
 
   const archivoABase64 = (file) =>
     new Promise((resolve, reject) => {
@@ -2326,7 +2424,15 @@ export default function ComisionRevisoraPage() {
                         </p>
                         {loteTablaDetectado.columnas_detectadas?.length ? (
                           <p className="mt-1 text-xs font-semibold">
-                            Columnas vistas: {loteTablaDetectado.columnas_detectadas.join(", ")}
+                            Columnas vistas:{" "}
+                            {loteTablaDetectado.columnas_detectadas
+                              .map((columna) =>
+                                typeof columna === "string"
+                                  ? columna
+                                  : columna.original || columna.label || columna.key
+                              )
+                              .filter(Boolean)
+                              .join(", ")}
                           </p>
                         ) : null}
                         {loteTablaDetectado.observaciones ? (
