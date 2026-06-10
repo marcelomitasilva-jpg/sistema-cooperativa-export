@@ -177,6 +177,8 @@ _(Agregar ideas nuevas aquí)_
 - [x] Crear OCR especializado para libros, recibos, folios, caja, almacen, alzas y ventas de oro.
 - [x] Crear cruces iniciales: recibos duplicados, folios repetidos, documentos sin referencia y rendiciones descuadradas.
 - [x] Ejecutar `docs/supabase-comision-revisora.sql` en Supabase.
+- [x] Crear primera version de extraccion dinamica por lotes: deteccion automatica de tipo de tabla, columnas variables y revision editable antes de guardar.
+- [ ] Probar extraccion dinamica con lotes reales de ingresos: alzas, ventas de oro, prestamos/pagos y otros ingresos.
 - [ ] **P1** Crear ficha de revision por movimiento: documento principal, respaldo fisico, caja, almacen, socio/proveedor, oro/produccion, observaciones y conclusion.
 - [ ] **P1** Separar libros por flujo: caja, egresos, ingresos, almacen, alzas/produccion, ventas de oro, prestamos y rendiciones.
 - [ ] **P1** Crear matriz de cruce documental: libro contra respaldo fisico, caja, almacen, socio/proveedor y oro/produccion.

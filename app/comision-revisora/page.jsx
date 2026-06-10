@@ -29,6 +29,102 @@ const RUBROS = [
   "otro",
 ];
 
+const TIPOS_LOTE_TABLA = [
+  { value: "auto", label: "Detectar automaticamente" },
+  { value: "alzas_produccion", label: "Alzas / produccion de oro" },
+  { value: "ventas_oro", label: "Ventas de oro" },
+  { value: "ingresos_prestamos_pagos", label: "Ingresos por prestamos y pagos" },
+  { value: "otros_ingresos", label: "Otros ingresos" },
+  { value: "egresos_generales", label: "Egresos generales" },
+  { value: "combustible", label: "Combustible / diesel / gasolina" },
+  { value: "explosivos", label: "Explosivos" },
+  { value: "almacen", label: "Almacen" },
+  { value: "rendiciones_viaticos", label: "Rendiciones / viaticos" },
+  { value: "cuaderno_egresos_revisora", label: "Cuaderno de egresos revisora" },
+  { value: "otro", label: "Otro formato manuscrito" },
+];
+
+const COLUMNAS_BASE_LOTE = [
+  { key: "fecha_documento", label: "Fecha", type: "date", width: "w-36" },
+  { key: "concepto", label: "Detalle", type: "text", width: "w-72" },
+  { key: "numero_recibo", label: "Recibo", type: "text", width: "w-24" },
+  { key: "folio", label: "Folio", type: "text", width: "w-24" },
+  { key: "observaciones", label: "Obs.", type: "text", width: "w-64" },
+];
+
+const COLUMNAS_POR_LOTE = {
+  alzas_produccion: [
+    { key: "cantidad", label: "Cantidad", type: "number", width: "w-28", step: "0.0001" },
+    { key: "unidad", label: "Unidad", type: "text", width: "w-24" },
+    { key: "ley_oro", label: "Ley", type: "text", width: "w-24" },
+    { key: "responsable", label: "Responsable", type: "text", width: "w-40" },
+    { key: "destino", label: "Lugar", type: "text", width: "w-32" },
+  ],
+  ventas_oro: [
+    { key: "monto_ingreso", label: "Ingreso Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "cantidad", label: "Peso", type: "number", width: "w-28", step: "0.0001" },
+    { key: "unidad", label: "Unidad", type: "text", width: "w-24" },
+    { key: "ley_oro", label: "Ley", type: "text", width: "w-24" },
+    { key: "precio_unitario", label: "Precio", type: "number", width: "w-28", step: "0.0001" },
+    { key: "contraparte", label: "Comprador", type: "text", width: "w-44" },
+  ],
+  ingresos_prestamos_pagos: [
+    { key: "monto_ingreso", label: "Ingreso Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "persona", label: "Persona", type: "text", width: "w-44" },
+    { key: "contraparte", label: "Acreedor/deudor", type: "text", width: "w-44" },
+    { key: "interes_porcentaje", label: "Interes %", type: "number", width: "w-24", step: "0.0001" },
+    { key: "saldo_a_favor", label: "A favor", type: "number", width: "w-28", step: "0.01" },
+    { key: "saldo_en_contra", label: "En contra", type: "number", width: "w-28", step: "0.01" },
+  ],
+  otros_ingresos: [
+    { key: "monto_ingreso", label: "Ingreso Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "persona", label: "Persona", type: "text", width: "w-44" },
+    { key: "rubro", label: "Rubro", type: "select-rubro", width: "w-40" },
+    { key: "subrubro", label: "Subrubro", type: "text", width: "w-36" },
+  ],
+  egresos_generales: [
+    { key: "monto_egreso", label: "Egreso Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "persona", label: "Persona/proveedor", type: "text", width: "w-44" },
+    { key: "rubro", label: "Rubro", type: "select-rubro", width: "w-40" },
+    { key: "subrubro", label: "Subrubro", type: "text", width: "w-36" },
+  ],
+  combustible: [
+    { key: "monto_egreso", label: "Egreso Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "item", label: "Item", type: "text", width: "w-36" },
+    { key: "cantidad", label: "Cantidad", type: "number", width: "w-28", step: "0.0001" },
+    { key: "unidad", label: "Unidad", type: "text", width: "w-24" },
+    { key: "persona", label: "Proveedor", type: "text", width: "w-44" },
+  ],
+  explosivos: [
+    { key: "monto_egreso", label: "Egreso Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "item", label: "Item", type: "text", width: "w-36" },
+    { key: "cantidad", label: "Cantidad", type: "number", width: "w-28", step: "0.0001" },
+    { key: "unidad", label: "Unidad", type: "text", width: "w-24" },
+    { key: "persona", label: "Proveedor", type: "text", width: "w-44" },
+  ],
+  almacen: [
+    { key: "item", label: "Item", type: "text", width: "w-40" },
+    { key: "cantidad", label: "Cantidad", type: "number", width: "w-28", step: "0.0001" },
+    { key: "unidad", label: "Unidad", type: "text", width: "w-24" },
+    { key: "saldo_libro", label: "Saldo", type: "number", width: "w-28", step: "0.0001" },
+    { key: "responsable", label: "Responsable", type: "text", width: "w-40" },
+  ],
+  rendiciones_viaticos: [
+    { key: "monto_egreso", label: "Entregado Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "monto_rendido", label: "Rendido Bs", type: "number", width: "w-28", step: "0.01" },
+    { key: "persona", label: "Responsable", type: "text", width: "w-44" },
+    { key: "destino", label: "Destino", type: "text", width: "w-36" },
+    { key: "tarea", label: "Tarea", type: "text", width: "w-44" },
+  ],
+};
+
+const COLUMNAS_FALLBACK_LOTE = [
+  { key: "monto_egreso", label: "Egreso Bs", type: "number", width: "w-28", step: "0.01" },
+  { key: "monto_ingreso", label: "Ingreso Bs", type: "number", width: "w-28", step: "0.01" },
+  { key: "rubro", label: "Rubro", type: "select-rubro", width: "w-40" },
+  { key: "subrubro", label: "Subrubro", type: "text", width: "w-36" },
+];
+
 const FORM_INICIAL = {
   tipo_documento: "caja_hacienda",
   tipo_movimiento: "egreso",
@@ -153,6 +249,56 @@ function fechaLocal(fecha) {
 
 function etiquetaTipo(tipo) {
   return TIPOS_DOCUMENTO.find((item) => item.value === tipo)?.label || tipo;
+}
+
+function etiquetaLote(tipo) {
+  return TIPOS_LOTE_TABLA.find((item) => item.value === tipo)?.label || tipo || "No detectado";
+}
+
+function tipoDocumentoDesdeLote(tipoLote) {
+  const mapa = {
+    auto: "cuaderno_egresos_revisora",
+    alzas_produccion: "alzas_produccion",
+    ventas_oro: "ventas_oro",
+    ingresos_prestamos_pagos: "prestamo_cooperativa",
+    otros_ingresos: "caja_hacienda",
+    egresos_generales: "cuaderno_egresos_revisora",
+    combustible: "cuaderno_egresos_revisora",
+    explosivos: "cuaderno_egresos_revisora",
+    almacen: "almacen",
+    rendiciones_viaticos: "entrega_cuenta_rendicion",
+    cuaderno_egresos_revisora: "cuaderno_egresos_revisora",
+  };
+  return mapa[tipoLote] || "otro";
+}
+
+function movimientoDesdeLote(tipoLote) {
+  if (["alzas_produccion", "almacen"].includes(tipoLote)) return "neutro";
+  if (["ventas_oro", "ingresos_prestamos_pagos", "otros_ingresos"].includes(tipoLote)) return "ingreso";
+  return "egreso";
+}
+
+function rubroDesdeLote(tipoLote, fila = {}) {
+  const mapa = {
+    combustible: "Combustible",
+    explosivos: "Explosivos",
+    ingresos_prestamos_pagos: "Prestamos",
+    ventas_oro: "Gastos generales",
+    rendiciones_viaticos: "Viaticos",
+    egresos_generales: "Gastos generales",
+  };
+  return fila.rubro || mapa[tipoLote] || "";
+}
+
+function columnasParaLote(tipoLote) {
+  const especiales = COLUMNAS_POR_LOTE[tipoLote] || COLUMNAS_FALLBACK_LOTE;
+  const combinadas = [...COLUMNAS_BASE_LOTE.slice(0, 2), ...especiales, ...COLUMNAS_BASE_LOTE.slice(2)];
+  const vistas = new Set();
+  return combinadas.filter((columna) => {
+    if (vistas.has(columna.key)) return false;
+    vistas.add(columna.key);
+    return true;
+  });
 }
 
 function normalizarTexto(valor) {
@@ -299,6 +445,27 @@ async function insertarConFallback(tabla, payload, camposOpcionales = []) {
   const payloadCompatible = { ...payload };
   camposOpcionales.forEach((campo) => delete payloadCompatible[campo]);
   const { error: fallbackError } = await supabase.from(tabla).insert([payloadCompatible]);
+  if (fallbackError) throw fallbackError;
+}
+
+async function insertarMuchosConFallback(tabla, payload, camposOpcionales = []) {
+  const { error } = await supabase.from(tabla).insert(payload);
+  if (!error) return;
+
+  const textoError = `${error.message || ""} ${error.details || ""}`.toLowerCase();
+  const pareceColumnaFaltante =
+    textoError.includes("schema cache") ||
+    textoError.includes("column") ||
+    textoError.includes("could not find");
+
+  if (!pareceColumnaFaltante || !camposOpcionales.length) throw error;
+
+  const payloadCompatible = payload.map((item) => {
+    const limpio = { ...item };
+    camposOpcionales.forEach((campo) => delete limpio[campo]);
+    return limpio;
+  });
+  const { error: fallbackError } = await supabase.from(tabla).insert(payloadCompatible);
   if (fallbackError) throw fallbackError;
 }
 
@@ -726,7 +893,8 @@ export default function ComisionRevisoraPage() {
   const [filasExtraidas, setFilasExtraidas] = useState([]);
   const [guardarDuplicadosTabla, setGuardarDuplicadosTabla] = useState(false);
   const [fotosTabla, setFotosTabla] = useState([]);
-  const [tipoFuenteTabla, setTipoFuenteTabla] = useState("cuaderno_egresos_revisora");
+  const [tipoFuenteTabla, setTipoFuenteTabla] = useState("auto");
+  const [loteTablaDetectado, setLoteTablaDetectado] = useState(null);
   const [respaldoForm, setRespaldoForm] = useState(RESPALDO_INICIAL);
   const [fotoRespaldo, setFotoRespaldo] = useState(null);
   const [nuevaGestion, setNuevaGestion] = useState({
@@ -903,6 +1071,9 @@ export default function ComisionRevisoraPage() {
     () => filasConDuplicados.filter((fila) => !fila.coincidencias.length),
     [filasConDuplicados]
   );
+
+  const tipoLoteRevision = loteTablaDetectado?.tipo_lote_detectado || tipoFuenteTabla;
+  const columnasRevisionLote = useMemo(() => columnasParaLote(tipoLoteRevision), [tipoLoteRevision]);
 
   const archivoABase64 = (file) =>
     new Promise((resolve, reject) => {
@@ -1173,26 +1344,60 @@ export default function ComisionRevisoraPage() {
       const resultado = await res.json();
       if (resultado.error) throw new Error(resultado.error);
 
+      const tipoDetectado =
+        resultado.tipo_lote_detectado && resultado.tipo_lote_detectado !== "auto"
+          ? resultado.tipo_lote_detectado
+          : resultado.tipo_documento || tipoFuenteTabla;
+      const tipoParaFilas = tipoFuenteTabla === "auto" ? tipoDetectado : tipoFuenteTabla;
+      const tipoDocumentoBase = tipoDocumentoDesdeLote(tipoParaFilas);
+      const movimientoBase = movimientoDesdeLote(tipoParaFilas);
+
+      setLoteTablaDetectado({
+        tipo_lote_solicitado: resultado.tipo_lote_solicitado || tipoFuenteTabla,
+        tipo_lote_detectado: tipoParaFilas,
+        confianza_tipo_lote: resultado.confianza_tipo_lote || "media",
+        columnas_detectadas: resultado.columnas_detectadas || [],
+        titulo: resultado.titulo || "",
+        resumen: resultado.resumen || null,
+        observaciones: resultado.observaciones_pagina || resultado.resumen?.observaciones_generales || "",
+      });
+
       setFilasExtraidas(
         (resultado.filas || []).map((fila, index) => ({
           id_temporal: `${Date.now()}-${index}`,
-          tipo_documento: fila.tipo_documento || tipoFuenteTabla,
-          tipo_movimiento: fila.tipo_movimiento || "egreso",
+          tipo_lote: tipoParaFilas,
+          tipo_documento: fila.tipo_documento || tipoDocumentoBase,
+          tipo_movimiento: fila.tipo_movimiento || movimientoBase,
           fecha_documento: limpiarDatoIa(fila.fecha_documento || fila.fecha),
           folio: limpiarDatoIa(fila.folio || fila.numero_folio),
           numero_recibo: limpiarDatoIa(fila.numero_recibo),
           persona: limpiarDatoIa(fila.responsable || fila.persona),
           concepto: limpiarDatoIa(fila.concepto || fila.detalle),
-          rubro: limpiarDatoIa(fila.rubro),
+          rubro: limpiarDatoIa(rubroDesdeLote(tipoParaFilas, fila)),
           subrubro: limpiarDatoIa(fila.subrubro),
           responsable: limpiarDatoIa(fila.responsable),
           destino: limpiarDatoIa(fila.destino),
           tarea: limpiarDatoIa(fila.tarea),
-          monto_ingreso: fila.monto_ingreso ?? "",
-          monto_egreso: fila.monto_egreso ?? fila.monto_bs ?? "",
+          monto_ingreso:
+            fila.monto_ingreso ?? (movimientoBase === "ingreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
+          monto_egreso:
+            fila.monto_egreso ?? (movimientoBase === "egreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
+          monto_rendido: fila.monto_rendido ?? "",
+          saldo_libro: fila.saldo_libro ?? "",
+          cantidad: fila.cantidad ?? "",
+          unidad: limpiarDatoIa(fila.unidad),
+          item: limpiarDatoIa(fila.item),
+          contraparte: limpiarDatoIa(fila.contraparte || fila.comprador || fila.acreedor || fila.deudor),
+          precio_unitario: fila.precio_unitario ?? "",
+          precio_referencia: fila.precio_referencia ?? "",
+          ley_oro: limpiarDatoIa(fila.ley_oro),
+          interes_porcentaje: fila.interes_porcentaje ?? "",
+          saldo_a_favor: fila.saldo_a_favor ?? "",
+          saldo_en_contra: fila.saldo_en_contra ?? "",
           observaciones: [
             fila.observaciones,
             fila.dudas,
+            resultado.tipo_lote_detectado ? `Tipo lote IA: ${etiquetaLote(tipoParaFilas)}` : "",
             fila.confianza && typeof fila.confianza === "string" ? `Confianza IA: ${fila.confianza}` : "",
             Array.isArray(fila.campos_dudosos) && fila.campos_dudosos.length
               ? `Campos dudosos: ${fila.campos_dudosos.join(", ")}`
@@ -1205,7 +1410,10 @@ export default function ComisionRevisoraPage() {
       );
       setGuardarDuplicadosTabla(false);
 
-      setMensaje({ texto: "Filas extraidas. Revisa la tabla antes de guardar.", tipo: "exito" });
+      setMensaje({
+        texto: `Filas extraidas. Tipo detectado: ${etiquetaLote(tipoParaFilas)}. Revisa antes de guardar.`,
+        tipo: "exito",
+      });
     } catch (error) {
       setMensaje({ texto: `No se pudo extraer la tabla: ${error.message}`, tipo: "error" });
     } finally {
@@ -1240,20 +1448,39 @@ export default function ComisionRevisoraPage() {
 
     setGuardando(true);
     try {
-      const { data: lote, error: loteError } = await supabase
+      const payloadLote = {
+        gestion_id: gestionSeleccionada,
+        tipo_fuente: loteTablaDetectado?.tipo_lote_detectado || tipoFuenteTabla,
+        tipo_fuente_solicitada: tipoFuenteTabla,
+        tipo_fuente_detectada: loteTablaDetectado?.tipo_lote_detectado || tipoFuenteTabla,
+        confianza_tipo_lote: loteTablaDetectado?.confianza_tipo_lote || null,
+        columnas_detectadas: loteTablaDetectado?.columnas_detectadas || [],
+        descripcion: guardarDuplicadosTabla
+          ? `Carga dinamica desde tabla manuscrita (${etiquetaLote(tipoLoteRevision)}) con repetidos autorizados`
+          : `Carga dinamica desde tabla manuscrita (${etiquetaLote(tipoLoteRevision)}); repetidos omitidos`,
+        cantidad_imagenes: fotosTabla.length,
+      };
+
+      let { data: lote, error: loteError } = await supabase
         .from("comision_lotes_carga")
-        .insert([
-          {
-            gestion_id: gestionSeleccionada,
-            tipo_fuente: tipoFuenteTabla,
-            descripcion: guardarDuplicadosTabla
-              ? "Carga desde tabla manuscrita revisada con repetidos autorizados"
-              : "Carga desde tabla manuscrita revisada; repetidos omitidos",
-            cantidad_imagenes: fotosTabla.length,
-          },
-        ])
+        .insert([payloadLote])
         .select("*")
         .single();
+
+      if (loteError) {
+        const payloadCompatible = { ...payloadLote };
+        delete payloadCompatible.tipo_fuente_solicitada;
+        delete payloadCompatible.tipo_fuente_detectada;
+        delete payloadCompatible.confianza_tipo_lote;
+        delete payloadCompatible.columnas_detectadas;
+        const retry = await supabase
+          .from("comision_lotes_carga")
+          .insert([payloadCompatible])
+          .select("*")
+          .single();
+        lote = retry.data;
+        loteError = retry.error;
+      }
       if (loteError) throw loteError;
 
       const payload = filasParaGuardar.map((fila) => ({
@@ -1274,6 +1501,19 @@ export default function ComisionRevisoraPage() {
         tarea: fila.tarea || null,
         monto_ingreso: numero(fila.monto_ingreso),
         monto_egreso: numero(fila.monto_egreso),
+        monto_rendido: numero(fila.monto_rendido),
+        saldo_libro: opcionalNumero(fila.saldo_libro),
+        cantidad: opcionalNumero(fila.cantidad),
+        unidad: fila.unidad || null,
+        item: fila.item || null,
+        contraparte: fila.contraparte || null,
+        precio_unitario: opcionalNumero(fila.precio_unitario),
+        precio_referencia: opcionalNumero(fila.precio_referencia),
+        ley_oro: fila.ley_oro || null,
+        interes_porcentaje: opcionalNumero(fila.interes_porcentaje),
+        saldo_a_favor: numero(fila.saldo_a_favor),
+        saldo_en_contra: numero(fila.saldo_en_contra),
+        requiere_respaldo: true,
         confianza: opcionalNumero(fila.confianza),
         observaciones: [
           fila.observaciones,
@@ -1285,12 +1525,17 @@ export default function ComisionRevisoraPage() {
           .join(" | ") || null,
       }));
 
-      const { error } = await supabase.from("comision_documentos").insert(payload);
-      if (error) throw error;
+      await insertarMuchosConFallback("comision_documentos", payload, [
+        "precio_unitario",
+        "precio_referencia",
+        "ley_oro",
+        "requiere_respaldo",
+      ]);
 
       setFilasExtraidas([]);
       setFotosTabla([]);
       setGuardarDuplicadosTabla(false);
+      setLoteTablaDetectado(null);
       await obtenerDocumentos(gestionSeleccionada);
       setMensaje({
         texto: guardarDuplicadosTabla
@@ -1423,6 +1668,34 @@ export default function ComisionRevisoraPage() {
   };
 
   const gestionActual = gestiones.find((item) => item.id === gestionSeleccionada);
+  const renderInputFila = (fila, columna) => {
+    if (columna.type === "select-rubro") {
+      return (
+        <select
+          value={fila[columna.key] || ""}
+          onChange={(e) => actualizarFilaExtraida(fila.id_temporal, columna.key, e.target.value)}
+          className={`${columna.width} rounded border border-slate-300 px-2 py-1`}
+        >
+          <option value="">Rubro</option>
+          {RUBROS.map((rubro) => (
+            <option key={rubro} value={rubro}>
+              {rubro}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    return (
+      <input
+        type={columna.type === "number" ? "number" : columna.type === "date" ? "date" : "text"}
+        step={columna.step || (columna.type === "number" ? "0.01" : undefined)}
+        value={fila[columna.key] || ""}
+        onChange={(e) => actualizarFilaExtraida(fila.id_temporal, columna.key, e.target.value)}
+        className={`${columna.width} rounded border border-slate-300 px-2 py-1`}
+      />
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[#edf2e6]">
@@ -1581,32 +1854,43 @@ export default function ComisionRevisoraPage() {
             </form>
 
             <section className="module-card p-5">
-              <h2 className="text-lg font-bold text-slate-900">Extraer tabla manuscrita</h2>
+              <h2 className="text-lg font-bold text-slate-900">Extraer lote manuscrito dinamico</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Para cuadernos con columnas variables: fecha, detalle, monto, recibo, folio y observaciones.
+                Suba una o varias paginas del mismo cuaderno. La IA puede detectar si es alzas, ventas de oro,
+                prestamos, ingresos, combustible, almacen u otro formato.
               </p>
               <div className="mt-4 grid gap-3">
                 <select
                   value={tipoFuenteTabla}
-                  onChange={(e) => setTipoFuenteTabla(e.target.value)}
+                  onChange={(e) => {
+                    setTipoFuenteTabla(e.target.value);
+                    setLoteTablaDetectado(null);
+                    setFilasExtraidas([]);
+                  }}
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 >
-                  <option value="cuaderno_egresos_revisora">Cuaderno de egresos revisora</option>
-                  <option value="combustible">Cuaderno combustible / aceites / grasas</option>
-                  <option value="explosivos">Cuaderno explosivos</option>
-                  <option value="prestamos_intereses">Prestamos e intereses</option>
-                  <option value="telefonos_giros">Telefonos y giros</option>
-                  <option value="viaticos">Viaticos</option>
-                  <option value="servicios_externos">Servicios externos</option>
-                  <option value="otro">Otro formato manuscrito</option>
+                  {TIPOS_LOTE_TABLA.map((tipo) => (
+                    <option key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </option>
+                  ))}
                 </select>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) => setFotosTabla(Array.from(e.target.files || []))}
+                  onChange={(e) => {
+                    setFotosTabla(Array.from(e.target.files || []));
+                    setLoteTablaDetectado(null);
+                    setFilasExtraidas([]);
+                  }}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 />
+                {fotosTabla.length ? (
+                  <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
+                    Paginas seleccionadas: {fotosTabla.length}. Tipo: {etiquetaLote(tipoFuenteTabla)}.
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   onClick={analizarTablaManuscrita}
@@ -2034,6 +2318,22 @@ export default function ComisionRevisoraPage() {
                     <p className="text-sm text-slate-500">
                       Corrige las filas extraidas por IA y luego guardalas en la gestion.
                     </p>
+                    {loteTablaDetectado ? (
+                      <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
+                        <p className="font-bold">
+                          Tipo detectado: {etiquetaLote(loteTablaDetectado.tipo_lote_detectado)} | Confianza:{" "}
+                          {loteTablaDetectado.confianza_tipo_lote || "media"}
+                        </p>
+                        {loteTablaDetectado.columnas_detectadas?.length ? (
+                          <p className="mt-1 text-xs font-semibold">
+                            Columnas vistas: {loteTablaDetectado.columnas_detectadas.join(", ")}
+                          </p>
+                        ) : null}
+                        {loteTablaDetectado.observaciones ? (
+                          <p className="mt-1 text-xs">{loteTablaDetectado.observaciones}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <p className="mt-1 text-sm font-semibold text-slate-700">
                       Nuevas: {filasNuevas.length} | Posibles repetidas: {filasDuplicadas.length}
                     </p>
@@ -2068,17 +2368,14 @@ export default function ComisionRevisoraPage() {
                   </div>
                 ) : null}
                 <div className="overflow-x-auto">
-                  <table className="min-w-[1100px] divide-y divide-slate-200 text-sm">
+                  <table className="min-w-[1200px] divide-y divide-slate-200 text-sm">
                     <thead className="bg-indigo-50 text-left text-xs uppercase tracking-wide text-indigo-700">
                       <tr>
-                        <th className="px-3 py-2">Fecha</th>
-                        <th className="px-3 py-2">Detalle</th>
-                        <th className="px-3 py-2">Monto</th>
-                        <th className="px-3 py-2">Recibo</th>
-                        <th className="px-3 py-2">Folio</th>
-                        <th className="px-3 py-2">Rubro</th>
-                        <th className="px-3 py-2">Subrubro</th>
-                        <th className="px-3 py-2">Obs.</th>
+                        {columnasRevisionLote.map((columna) => (
+                          <th key={columna.key} className="px-3 py-2">
+                            {columna.label}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2087,98 +2384,21 @@ export default function ComisionRevisoraPage() {
                           key={fila.id_temporal}
                           className={fila.coincidencias.length ? "bg-red-50/70" : ""}
                         >
-                          <td className="px-3 py-2">
-                            <input
-                              type="date"
-                              value={fila.fecha_documento}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "fecha_documento", e.target.value)
-                              }
-                              className="w-36 rounded border border-slate-300 px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            {fila.coincidencias.length ? (
-                              <p className="mb-1 rounded bg-red-100 px-2 py-1 text-xs font-bold text-red-700">
-                                Ya cargado
-                              </p>
-                            ) : null}
-                            <input
-                              value={fila.concepto}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "concepto", e.target.value)
-                              }
-                              className="w-72 rounded border border-slate-300 px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={fila.monto_egreso}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "monto_egreso", e.target.value)
-                              }
-                              className="w-28 rounded border border-slate-300 px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={fila.numero_recibo}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "numero_recibo", e.target.value)
-                              }
-                              className="w-24 rounded border border-slate-300 px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={fila.folio}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "folio", e.target.value)
-                              }
-                              className="w-24 rounded border border-slate-300 px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <select
-                              value={fila.rubro}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "rubro", e.target.value)
-                              }
-                              className="w-40 rounded border border-slate-300 px-2 py-1"
-                            >
-                              <option value="">Rubro</option>
-                              {RUBROS.map((rubro) => (
-                                <option key={rubro} value={rubro}>
-                                  {rubro}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={fila.subrubro}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "subrubro", e.target.value)
-                              }
-                              className="w-36 rounded border border-slate-300 px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              value={fila.observaciones}
-                              onChange={(e) =>
-                                actualizarFilaExtraida(fila.id_temporal, "observaciones", e.target.value)
-                              }
-                              className="w-64 rounded border border-slate-300 px-2 py-1"
-                            />
-                            {fila.coincidencias.length ? (
-                              <p className="mt-1 text-xs text-red-700">
-                                Coincide con: {descripcionCoincidencia(fila.coincidencias[0].doc)}
-                              </p>
-                            ) : null}
-                          </td>
+                          {columnasRevisionLote.map((columna) => (
+                            <td key={columna.key} className="px-3 py-2 align-top">
+                              {columna.key === "concepto" && fila.coincidencias.length ? (
+                                <p className="mb-1 rounded bg-red-100 px-2 py-1 text-xs font-bold text-red-700">
+                                  Ya cargado
+                                </p>
+                              ) : null}
+                              {renderInputFila(fila, columna)}
+                              {columna.key === "observaciones" && fila.coincidencias.length ? (
+                                <p className="mt-1 text-xs text-red-700">
+                                  Coincide con: {descripcionCoincidencia(fila.coincidencias[0].doc)}
+                                </p>
+                              ) : null}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>

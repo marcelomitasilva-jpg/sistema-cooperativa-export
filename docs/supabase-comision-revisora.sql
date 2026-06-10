@@ -146,11 +146,21 @@ create table if not exists public.comision_lotes_carga (
   id uuid primary key default gen_random_uuid(),
   gestion_id uuid not null references public.comision_gestiones(id) on delete cascade,
   tipo_fuente text not null default 'cuaderno_egresos_revisora',
+  tipo_fuente_solicitada text,
+  tipo_fuente_detectada text,
+  confianza_tipo_lote text,
+  columnas_detectadas jsonb not null default '[]'::jsonb,
   descripcion text,
   cantidad_imagenes integer not null default 0,
   estado text not null default 'extraido',
   created_at timestamptz not null default now()
 );
+
+alter table public.comision_lotes_carga
+  add column if not exists tipo_fuente_solicitada text,
+  add column if not exists tipo_fuente_detectada text,
+  add column if not exists confianza_tipo_lote text,
+  add column if not exists columnas_detectadas jsonb not null default '[]'::jsonb;
 
 create table if not exists public.comision_respaldos (
   id uuid primary key default gen_random_uuid(),
