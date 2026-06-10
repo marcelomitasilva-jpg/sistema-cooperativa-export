@@ -44,6 +44,14 @@ const TIPOS_LOTE_TABLA = [
   { value: "otro", label: "Otro formato manuscrito" },
 ];
 
+const ORIENTACIONES_TABLA = [
+  { value: "auto_180", label: "Automatico: original + girar 180" },
+  { value: "normal", label: "Foto normal" },
+  { value: "rotar_180", label: "Girar 180 grados" },
+  { value: "rotar_90_derecha", label: "Girar 90 grados derecha" },
+  { value: "rotar_90_izquierda", label: "Girar 90 grados izquierda" },
+];
+
 const COLUMNAS_BASE_LOTE = [
   { key: "fecha_documento", label: "Fecha", type: "date", width: "w-36" },
   { key: "concepto", label: "Detalle", type: "text", width: "w-72" },
@@ -1114,6 +1122,7 @@ export default function ComisionRevisoraPage() {
   const [guardarDuplicadosTabla, setGuardarDuplicadosTabla] = useState(false);
   const [fotosTabla, setFotosTabla] = useState([]);
   const [tipoFuenteTabla, setTipoFuenteTabla] = useState("auto");
+  const [orientacionTabla, setOrientacionTabla] = useState("auto_180");
   const [loteTablaDetectado, setLoteTablaDetectado] = useState(null);
   const [respaldoForm, setRespaldoForm] = useState(RESPALDO_INICIAL);
   const [fotoRespaldo, setFotoRespaldo] = useState(null);
@@ -1305,6 +1314,53 @@ export default function ComisionRevisoraPage() {
       reader.onload = () => resolve(reader.result.split(",")[1]);
       reader.onerror = (error) => reject(error);
     });
+
+  const imagenRotadaABase64 = (file, grados) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+          const normalizado = ((grados % 360) + 360) % 360;
+          const canvas = document.createElement("canvas");
+          const contexto = canvas.getContext("2d");
+          const cambiaDimension = normalizado === 90 || normalizado === 270;
+
+          canvas.width = cambiaDimension ? image.height : image.width;
+          canvas.height = cambiaDimension ? image.width : image.height;
+
+          contexto.translate(canvas.width / 2, canvas.height / 2);
+          contexto.rotate((normalizado * Math.PI) / 180);
+          contexto.drawImage(image, -image.width / 2, -image.height / 2);
+
+          resolve(canvas.toDataURL("image/jpeg", 0.92).split(",")[1]);
+        };
+        image.onerror = reject;
+        image.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const prepararImagenesTabla = async (file) => {
+    if (orientacionTabla === "normal") {
+      return [{ imagenBase64: await archivoABase64(file), mimeType: file.type }];
+    }
+    if (orientacionTabla === "rotar_180") {
+      return [{ imagenBase64: await imagenRotadaABase64(file, 180), mimeType: "image/jpeg" }];
+    }
+    if (orientacionTabla === "rotar_90_derecha") {
+      return [{ imagenBase64: await imagenRotadaABase64(file, 90), mimeType: "image/jpeg" }];
+    }
+    if (orientacionTabla === "rotar_90_izquierda") {
+      return [{ imagenBase64: await imagenRotadaABase64(file, 270), mimeType: "image/jpeg" }];
+    }
+
+    return [
+      { imagenBase64: await archivoABase64(file), mimeType: file.type },
+      { imagenBase64: await imagenRotadaABase64(file, 180), mimeType: "image/jpeg" },
+    ];
+  };
 
   const crearGestion = async (e) => {
     e.preventDefault();
@@ -1552,17 +1608,12 @@ export default function ComisionRevisoraPage() {
     setMensaje({ texto: "La IA esta extrayendo filas manuscritas para revision...", tipo: "info" });
 
     try {
-      const imagenes = await Promise.all(
-        fotosTabla.map(async (file) => ({
-          imagenBase64: await archivoABase64(file),
-          mimeType: file.type,
-        }))
-      );
+      const imagenes = (await Promise.all(fotosTabla.map((file) => prepararImagenesTabla(file)))).flat();
 
       const res = await fetch("/api/comision-revisora/analizar-tabla", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imagenes, tipoFuente: tipoFuenteTabla }),
+        body: JSON.stringify({ imagenes, tipoFuente: tipoFuenteTabla, orientacion: orientacionTabla }),
       });
       const resultado = await res.json();
       if (resultado.error) throw new Error(resultado.error);
@@ -2126,6 +2177,21 @@ export default function ComisionRevisoraPage() {
                     </option>
                   ))}
                 </select>
+                <select
+                  value={orientacionTabla}
+                  onChange={(e) => {
+                    setOrientacionTabla(e.target.value);
+                    setLoteTablaDetectado(null);
+                    setFilasExtraidas([]);
+                  }}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {ORIENTACIONES_TABLA.map((orientacion) => (
+                    <option key={orientacion.value} value={orientacion.value}>
+                      {orientacion.label}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="file"
                   accept="image/*"
@@ -2140,6 +2206,7 @@ export default function ComisionRevisoraPage() {
                 {fotosTabla.length ? (
                   <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
                     Paginas seleccionadas: {fotosTabla.length}. Tipo: {etiquetaLote(tipoFuenteTabla)}.
+                    Orientacion: {ORIENTACIONES_TABLA.find((item) => item.value === orientacionTabla)?.label}.
                   </p>
                 ) : null}
                 <button

@@ -4,16 +4,25 @@ import { crearPromptExtraccionCuadernoEgresos } from "@/lib/comision-prompts";
 
 export async function POST(request) {
   try {
-    const { imagenes, tipoFuente } = await request.json();
+    const { imagenes, tipoFuente, orientacion } = await request.json();
     const tipoLote = tipoFuente || "auto";
 
     if (!Array.isArray(imagenes) || imagenes.length === 0) {
       return NextResponse.json({ error: "Faltan imagenes" }, { status: 400 });
     }
 
-    const promptText = crearPromptExtraccionCuadernoEgresos({
+    const promptBase = crearPromptExtraccionCuadernoEgresos({
       tipoFuente: tipoLote,
     });
+    const promptText =
+      orientacion === "auto_180"
+        ? `${promptBase}
+
+IMPORTANTE SOBRE ORIENTACION DE IMAGEN:
+El sistema puede enviarte dos versiones de una misma pagina: original y girada 180 grados.
+No son dos paginas distintas. Compara ambas, elige la orientacion donde la cabecera y las columnas se lean mejor, y extrae una sola vez.
+No dupliques filas por ver la misma pagina en dos orientaciones.`
+        : promptBase;
 
     const resultado = await analizarImagenes({
       prompt: promptText,
