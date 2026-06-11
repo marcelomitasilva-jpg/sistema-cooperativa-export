@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { analizarImagenes } from "@/lib/vision-ai";
 import {
+  crearPromptAuditoriaExtraccionTabla,
   crearPromptAnalisisEstructuraTabla,
   crearPromptExtraccionConEstructura,
 } from "@/lib/comision-prompts";
@@ -44,10 +45,30 @@ export async function POST(request) {
       estructura,
     });
 
-    const resultado = await analizarImagenes({
+    const resultadoInicial = await analizarImagenes({
       prompt: promptExtraccion,
       imagenes,
     });
+
+    const promptAuditoria = crearPromptAuditoriaExtraccionTabla({
+      tipoFuente: tipoLote,
+      estructura,
+      extraccion: resultadoInicial,
+    });
+
+    const resultadoAuditado = await analizarImagenes({
+      prompt: promptAuditoria,
+      imagenes,
+    });
+
+    const resultado = {
+      ...resultadoInicial,
+      ...resultadoAuditado,
+      resumen: resultadoAuditado.resumen || resultadoInicial.resumen,
+      filas: Array.isArray(resultadoAuditado.filas) ? resultadoAuditado.filas : resultadoInicial.filas,
+      alertas: Array.isArray(resultadoAuditado.alertas) ? resultadoAuditado.alertas : resultadoInicial.alertas,
+      auditoria_extraccion: resultadoAuditado.auditoria_extraccion || null,
+    };
 
     return NextResponse.json({
       ...resultado,

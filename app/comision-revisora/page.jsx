@@ -1686,6 +1686,7 @@ export default function ComisionRevisoraPage() {
       columnas_detectadas: columnasDetectadas,
       titulo: resultado.titulo || "",
       analisis_tabla: resultado.analisis_tabla || estructuraNormalizada.analisis_tabla || null,
+      auditoria_extraccion: resultado.auditoria_extraccion || null,
       resumen: resultado.resumen || null,
       observaciones:
         resultado.observaciones_pagina ||
@@ -2951,6 +2952,31 @@ export default function ComisionRevisoraPage() {
                             loteTablaDetectado.analisis_tabla.riesgos_lectura.length ? (
                               <p className="mt-1 font-semibold text-amber-800">
                                 Revisar: {loteTablaDetectado.analisis_tabla.riesgos_lectura.join("; ")}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {loteTablaDetectado.auditoria_extraccion ? (
+                          <div className="mt-2 rounded-md border border-emerald-200 bg-white/70 p-2 text-xs">
+                            <p className="font-bold text-emerald-950">
+                              Auditoria final: {loteTablaDetectado.auditoria_extraccion.resultado || "revisada"}
+                            </p>
+                            {Array.isArray(loteTablaDetectado.auditoria_extraccion.correcciones_realizadas) &&
+                            loteTablaDetectado.auditoria_extraccion.correcciones_realizadas.length ? (
+                              <p className="mt-1">
+                                Correcciones:{" "}
+                                {loteTablaDetectado.auditoria_extraccion.correcciones_realizadas
+                                  .map((item) => (typeof item === "string" ? item : item.descripcion || JSON.stringify(item)))
+                                  .join("; ")}
+                              </p>
+                            ) : null}
+                            {Array.isArray(loteTablaDetectado.auditoria_extraccion.riesgos_pendientes) &&
+                            loteTablaDetectado.auditoria_extraccion.riesgos_pendientes.length ? (
+                              <p className="mt-1 font-semibold text-amber-800">
+                                Riesgos:{" "}
+                                {loteTablaDetectado.auditoria_extraccion.riesgos_pendientes
+                                  .map((item) => (typeof item === "string" ? item : item.descripcion || JSON.stringify(item)))
+                                  .join("; ")}
                               </p>
                             ) : null}
                           </div>
