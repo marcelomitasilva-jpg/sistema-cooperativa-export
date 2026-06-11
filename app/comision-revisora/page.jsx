@@ -45,7 +45,7 @@ const TIPOS_LOTE_TABLA = [
 ];
 
 const ORIENTACIONES_TABLA = [
-  { value: "auto_180", label: "Automatico: original + girar 180" },
+  { value: "auto", label: "Automatico recomendado" },
   { value: "normal", label: "Foto normal" },
   { value: "rotar_180", label: "Girar 180 grados" },
   { value: "rotar_90_derecha", label: "Girar 90 grados derecha" },
@@ -1168,7 +1168,7 @@ export default function ComisionRevisoraPage() {
   const [guardarDuplicadosTabla, setGuardarDuplicadosTabla] = useState(false);
   const [fotosTabla, setFotosTabla] = useState([]);
   const [tipoFuenteTabla, setTipoFuenteTabla] = useState("auto");
-  const [orientacionTabla, setOrientacionTabla] = useState("auto_180");
+  const [orientacionTabla, setOrientacionTabla] = useState("auto");
   const [estructuraTabla, setEstructuraTabla] = useState(null);
   const [loteTablaDetectado, setLoteTablaDetectado] = useState(null);
   const [respaldoForm, setRespaldoForm] = useState(RESPALDO_INICIAL);
@@ -1390,23 +1390,43 @@ export default function ComisionRevisoraPage() {
       reader.readAsDataURL(file);
     });
 
-  const prepararImagenesTabla = async (file) => {
-    if (orientacionTabla === "normal") {
+  const orientacionDesdeEstructura = (estructura) => {
+    if (orientacionTabla !== "auto") return orientacionTabla;
+
+    const version = normalizarTexto(estructura?.analisis_tabla?.version_elegida);
+    if (version.includes("180")) return "rotar_180";
+    if (version.includes("izquierda") || version.includes("left") || version.includes("270")) {
+      return "rotar_90_izquierda";
+    }
+    if (version.includes("derecha") || version.includes("right")) {
+      return "rotar_90_derecha";
+    }
+    return "normal";
+  };
+
+  const prepararImagenesTabla = async (file, orientacion = orientacionTabla, etapa = "estructura") => {
+    if (orientacion === "normal") {
       return [{ imagenBase64: await archivoABase64(file), mimeType: file.type }];
     }
-    if (orientacionTabla === "rotar_180") {
+    if (orientacion === "rotar_180") {
       return [{ imagenBase64: await imagenRotadaABase64(file, 180), mimeType: "image/jpeg" }];
     }
-    if (orientacionTabla === "rotar_90_derecha") {
+    if (orientacion === "rotar_90_derecha") {
       return [{ imagenBase64: await imagenRotadaABase64(file, 90), mimeType: "image/jpeg" }];
     }
-    if (orientacionTabla === "rotar_90_izquierda") {
+    if (orientacion === "rotar_90_izquierda") {
       return [{ imagenBase64: await imagenRotadaABase64(file, 270), mimeType: "image/jpeg" }];
+    }
+
+    if (etapa === "extraccion") {
+      return [{ imagenBase64: await archivoABase64(file), mimeType: file.type }];
     }
 
     return [
       { imagenBase64: await archivoABase64(file), mimeType: file.type },
       { imagenBase64: await imagenRotadaABase64(file, 180), mimeType: "image/jpeg" },
+      { imagenBase64: await imagenRotadaABase64(file, 90), mimeType: "image/jpeg" },
+      { imagenBase64: await imagenRotadaABase64(file, 270), mimeType: "image/jpeg" },
     ];
   };
 
@@ -1741,7 +1761,9 @@ export default function ComisionRevisoraPage() {
     setMensaje({ texto: "La IA esta detectando tipo de tabla, columnas y estructura...", tipo: "info" });
 
     try {
-      const imagenes = (await Promise.all(fotosTabla.map((file) => prepararImagenesTabla(file)))).flat();
+      const imagenes = (
+        await Promise.all(fotosTabla.map((file) => prepararImagenesTabla(file, orientacionTabla, "estructura")))
+      ).flat();
 
       const res = await fetch("/api/comision-revisora/analizar-tabla", {
         method: "POST",
@@ -1795,7 +1817,12 @@ export default function ComisionRevisoraPage() {
     setMensaje({ texto: "La IA esta extrayendo filas con las columnas confirmadas...", tipo: "info" });
 
     try {
-      const imagenes = (await Promise.all(fotosTabla.map((file) => prepararImagenesTabla(file)))).flat();
+      const orientacionExtraccion = orientacionDesdeEstructura(estructuraTabla);
+      const imagenes = (
+        await Promise.all(
+          fotosTabla.map((file) => prepararImagenesTabla(file, orientacionExtraccion, "extraccion"))
+        )
+      ).flat();
 
       const res = await fetch("/api/comision-revisora/analizar-tabla", {
         method: "POST",
@@ -1803,7 +1830,7 @@ export default function ComisionRevisoraPage() {
         body: JSON.stringify({
           imagenes,
           tipoFuente: tipoFuenteTabla,
-          orientacion: orientacionTabla,
+          orientacion: orientacionExtraccion,
           modo: "filas",
           estructura: estructuraTabla,
         }),
@@ -2333,22 +2360,30 @@ export default function ComisionRevisoraPage() {
                     </option>
                   ))}
                 </select>
-                <select
-                  value={orientacionTabla}
-                  onChange={(e) => {
-                    setOrientacionTabla(e.target.value);
-                    setEstructuraTabla(null);
-                    setLoteTablaDetectado(null);
-                    setFilasExtraidas([]);
-                  }}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {ORIENTACIONES_TABLA.map((orientacion) => (
-                    <option key={orientacion.value} value={orientacion.value}>
-                      {orientacion.label}
-                    </option>
-                  ))}
-                </select>
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                  La orientacion se corrige automaticamente. Solo sube la foto como este.
+                </p>
+                <details className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <summary className="cursor-pointer text-sm font-bold text-slate-700">
+                    Opciones avanzadas de orientacion
+                  </summary>
+                  <select
+                    value={orientacionTabla}
+                    onChange={(e) => {
+                      setOrientacionTabla(e.target.value);
+                      setEstructuraTabla(null);
+                      setLoteTablaDetectado(null);
+                      setFilasExtraidas([]);
+                    }}
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    {ORIENTACIONES_TABLA.map((orientacion) => (
+                      <option key={orientacion.value} value={orientacion.value}>
+                        {orientacion.label}
+                      </option>
+                    ))}
+                  </select>
+                </details>
                 <input
                   type="file"
                   accept="image/*"
