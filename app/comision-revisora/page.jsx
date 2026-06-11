@@ -52,6 +52,20 @@ const ORIENTACIONES_TABLA = [
   { value: "rotar_90_izquierda", label: "Girar 90 grados izquierda" },
 ];
 
+const TIPOS_DATO_COLUMNA = [
+  { value: "texto", label: "Texto" },
+  { value: "fecha", label: "Fecha" },
+  { value: "dinero_bolivianos", label: "Dinero Bs" },
+  { value: "peso_gramos", label: "Peso gramos" },
+  { value: "cantidad", label: "Cantidad" },
+  { value: "recibo", label: "Recibo" },
+  { value: "folio", label: "Folio" },
+  { value: "persona", label: "Persona" },
+  { value: "item", label: "Item" },
+  { value: "saldo", label: "Saldo" },
+  { value: "observacion", label: "Observacion" },
+];
+
 const COLUMNAS_BASE_LOTE = [
   { key: "fecha_documento", label: "Fecha", type: "date", width: "w-36" },
   { key: "concepto", label: "Detalle", type: "text", width: "w-72" },
@@ -399,6 +413,38 @@ function columnasDesdeDetectadas(columnasDetectadas) {
       vistas.add(columna.key);
       return true;
     });
+}
+
+function columnaEditableDesdeIa(columna, index) {
+  const original =
+    typeof columna === "string"
+      ? columna
+      : columna.original || columna.label || columna.key || columna.nombre || columna.titulo || `Columna ${index + 1}`;
+  const key = normalizarClaveColumna(typeof columna === "string" ? original : columna.key || original);
+  return {
+    key: key || `columna_${index + 1}`,
+    label: typeof columna === "string" ? original : columna.label || original,
+    original,
+    tipo_dato: typeof columna === "string" ? "texto" : columna.tipo_dato || "texto",
+    obligatoria: typeof columna === "string" ? false : Boolean(columna.obligatoria),
+    descartada: typeof columna === "string" ? false : Boolean(columna.descartada),
+    motivo: typeof columna === "string" ? "" : columna.motivo || "",
+  };
+}
+
+function normalizarEstructuraTabla(estructura, tipoFuente = "auto") {
+  const columnas = Array.isArray(estructura?.columnas_detectadas)
+    ? estructura.columnas_detectadas.map(columnaEditableDesdeIa)
+    : [];
+
+  return {
+    tipo_lote_detectado: estructura?.tipo_lote_detectado || tipoFuente,
+    confianza_tipo_lote: estructura?.confianza_tipo_lote || "media",
+    analisis_tabla: estructura?.analisis_tabla || null,
+    columnas_detectadas: columnas,
+    columnas_descartadas: Array.isArray(estructura?.columnas_descartadas) ? estructura.columnas_descartadas : [],
+    observaciones_pagina: estructura?.observaciones_pagina || "",
+  };
 }
 
 function camposDinamicosFila(fila, columnasDetectadas = []) {
@@ -1123,6 +1169,7 @@ export default function ComisionRevisoraPage() {
   const [fotosTabla, setFotosTabla] = useState([]);
   const [tipoFuenteTabla, setTipoFuenteTabla] = useState("auto");
   const [orientacionTabla, setOrientacionTabla] = useState("auto_180");
+  const [estructuraTabla, setEstructuraTabla] = useState(null);
   const [loteTablaDetectado, setLoteTablaDetectado] = useState(null);
   const [respaldoForm, setRespaldoForm] = useState(RESPALDO_INICIAL);
   const [fotoRespaldo, setFotoRespaldo] = useState(null);
@@ -1135,6 +1182,7 @@ export default function ComisionRevisoraPage() {
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const [guardando, setGuardando] = useState(false);
   const [analizando, setAnalizando] = useState(false);
+  const [analizandoEstructura, setAnalizandoEstructura] = useState(false);
   const [analizandoTabla, setAnalizandoTabla] = useState(false);
   const [verificandoRespaldo, setVerificandoRespaldo] = useState(false);
 
@@ -1598,14 +1646,99 @@ export default function ComisionRevisoraPage() {
     }
   };
 
-  const analizarTablaManuscrita = async () => {
+  const aplicarResultadoTabla = (resultado, estructuraBase = null) => {
+    const estructuraNormalizada = estructuraBase || normalizarEstructuraTabla(resultado, tipoFuenteTabla);
+    const columnasDetectadas = Array.isArray(resultado.columnas_detectadas) && resultado.columnas_detectadas.length
+      ? resultado.columnas_detectadas
+      : estructuraNormalizada.columnas_detectadas || [];
+    const tipoDetectado =
+      resultado.tipo_lote_detectado && resultado.tipo_lote_detectado !== "auto"
+        ? resultado.tipo_lote_detectado
+        : estructuraNormalizada.tipo_lote_detectado || resultado.tipo_documento || tipoFuenteTabla;
+    const tipoParaFilas = tipoFuenteTabla === "auto" ? tipoDetectado : tipoFuenteTabla;
+    const tipoDocumentoBase = tipoDocumentoDesdeLote(tipoParaFilas);
+    const movimientoBase = movimientoDesdeLote(tipoParaFilas);
+
+    setLoteTablaDetectado({
+      tipo_lote_solicitado: resultado.tipo_lote_solicitado || tipoFuenteTabla,
+      tipo_lote_detectado: tipoParaFilas,
+      confianza_tipo_lote: resultado.confianza_tipo_lote || estructuraNormalizada.confianza_tipo_lote || "media",
+      columnas_detectadas: columnasDetectadas,
+      titulo: resultado.titulo || "",
+      analisis_tabla: resultado.analisis_tabla || estructuraNormalizada.analisis_tabla || null,
+      resumen: resultado.resumen || null,
+      observaciones:
+        resultado.observaciones_pagina ||
+        resultado.resumen?.observaciones_generales ||
+        estructuraNormalizada.observaciones_pagina ||
+        "",
+    });
+
+    setFilasExtraidas(
+      (resultado.filas || []).map((filaOriginal, index) => {
+        const fila = separarNumerosPegadosEnObservaciones(filaOriginal, tipoParaFilas);
+
+        return {
+          ...camposDinamicosFila(fila, columnasDetectadas),
+          id_temporal: `${Date.now()}-${index}`,
+          tipo_lote: tipoParaFilas,
+          tipo_documento: fila.tipo_documento || tipoDocumentoBase,
+          tipo_movimiento: fila.tipo_movimiento || movimientoBase,
+          fecha_documento: limpiarDatoIa(fila.fecha_documento || fila.fecha),
+          folio: limpiarDatoIa(fila.folio || fila.numero_folio),
+          numero_recibo: limpiarDatoIa(fila.numero_recibo),
+          persona: limpiarDatoIa(fila.responsable || fila.persona),
+          concepto: limpiarDatoIa(fila.concepto || fila.detalle),
+          rubro: limpiarDatoIa(rubroDesdeLote(tipoParaFilas, fila)),
+          subrubro: limpiarDatoIa(fila.subrubro),
+          responsable: limpiarDatoIa(fila.responsable),
+          destino: limpiarDatoIa(fila.destino),
+          tarea: limpiarDatoIa(fila.tarea),
+          monto_ingreso:
+            fila.monto_ingreso ?? (movimientoBase === "ingreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
+          monto_egreso:
+            fila.monto_egreso ?? (movimientoBase === "egreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
+          monto_rendido: fila.monto_rendido ?? "",
+          saldo_libro: fila.saldo_libro ?? "",
+          cantidad: fila.cantidad ?? "",
+          unidad: limpiarDatoIa(fila.unidad),
+          item: limpiarDatoIa(fila.item),
+          contraparte: limpiarDatoIa(fila.contraparte || fila.comprador || fila.acreedor || fila.deudor),
+          precio_unitario: fila.precio_unitario ?? "",
+          precio_referencia: fila.precio_referencia ?? "",
+          ley_oro: limpiarDatoIa(fila.ley_oro),
+          interes_porcentaje: fila.interes_porcentaje ?? "",
+          saldo_a_favor: fila.saldo_a_favor ?? "",
+          saldo_en_contra: fila.saldo_en_contra ?? "",
+          observaciones: [
+            fila.observaciones,
+            Array.isArray(fila.valores_sin_ubicar) && fila.valores_sin_ubicar.length
+              ? `Valores sin ubicar: ${fila.valores_sin_ubicar.join(", ")}`
+              : "",
+            fila.dudas,
+            resultado.tipo_lote_detectado ? `Tipo lote IA: ${etiquetaLote(tipoParaFilas)}` : "",
+            fila.confianza && typeof fila.confianza === "string" ? `Confianza IA: ${fila.confianza}` : "",
+            Array.isArray(fila.campos_dudosos) && fila.campos_dudosos.length
+              ? `Campos dudosos: ${fila.campos_dudosos.join(", ")}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" | "),
+          confianza: confianzaIaANumero(fila.confianza, fila.confianza_numerica) ?? "",
+        };
+      })
+    );
+    setGuardarDuplicadosTabla(false);
+  };
+
+  const analizarEstructuraTabla = async () => {
     if (!fotosTabla.length) {
       setMensaje({ texto: "Selecciona una o varias fotos del cuaderno manuscrito.", tipo: "advertencia" });
       return;
     }
 
-    setAnalizandoTabla(true);
-    setMensaje({ texto: "La IA esta extrayendo filas manuscritas para revision...", tipo: "info" });
+    setAnalizandoEstructura(true);
+    setMensaje({ texto: "La IA esta detectando tipo de tabla, columnas y estructura...", tipo: "info" });
 
     try {
       const imagenes = (await Promise.all(fotosTabla.map((file) => prepararImagenesTabla(file)))).flat();
@@ -1613,89 +1746,75 @@ export default function ComisionRevisoraPage() {
       const res = await fetch("/api/comision-revisora/analizar-tabla", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imagenes, tipoFuente: tipoFuenteTabla, orientacion: orientacionTabla }),
+        body: JSON.stringify({
+          imagenes,
+          tipoFuente: tipoFuenteTabla,
+          orientacion: orientacionTabla,
+          modo: "estructura",
+        }),
       });
       const resultado = await res.json();
       if (resultado.error) throw new Error(resultado.error);
 
-      const tipoDetectado =
-        resultado.tipo_lote_detectado && resultado.tipo_lote_detectado !== "auto"
-          ? resultado.tipo_lote_detectado
-          : resultado.tipo_documento || tipoFuenteTabla;
-      const tipoParaFilas = tipoFuenteTabla === "auto" ? tipoDetectado : tipoFuenteTabla;
-      const tipoDocumentoBase = tipoDocumentoDesdeLote(tipoParaFilas);
-      const movimientoBase = movimientoDesdeLote(tipoParaFilas);
-      const columnasDetectadas = resultado.columnas_detectadas || [];
-
+      const estructura = normalizarEstructuraTabla(resultado, tipoFuenteTabla);
+      setEstructuraTabla(estructura);
+      setFilasExtraidas([]);
       setLoteTablaDetectado({
         tipo_lote_solicitado: resultado.tipo_lote_solicitado || tipoFuenteTabla,
-        tipo_lote_detectado: tipoParaFilas,
-        confianza_tipo_lote: resultado.confianza_tipo_lote || "media",
-        columnas_detectadas: columnasDetectadas,
-        titulo: resultado.titulo || "",
-        analisis_tabla: resultado.analisis_tabla || null,
-        resumen: resultado.resumen || null,
-        observaciones: resultado.observaciones_pagina || resultado.resumen?.observaciones_generales || "",
+        tipo_lote_detectado: estructura.tipo_lote_detectado,
+        confianza_tipo_lote: estructura.confianza_tipo_lote,
+        columnas_detectadas: estructura.columnas_detectadas,
+        titulo: "",
+        analisis_tabla: estructura.analisis_tabla,
+        resumen: null,
+        observaciones: estructura.observaciones_pagina,
       });
 
-      setFilasExtraidas(
-        (resultado.filas || []).map((filaOriginal, index) => {
-          const fila = separarNumerosPegadosEnObservaciones(filaOriginal, tipoParaFilas);
+      setMensaje({
+        texto: `Estructura detectada: ${etiquetaLote(estructura.tipo_lote_detectado)}. Revisa columnas antes de extraer filas.`,
+        tipo: "exito",
+      });
+    } catch (error) {
+      setMensaje({ texto: `No se pudo analizar la estructura: ${error.message}`, tipo: "error" });
+    } finally {
+      setAnalizandoEstructura(false);
+    }
+  };
 
-          return {
-            ...camposDinamicosFila(fila, columnasDetectadas),
-            id_temporal: `${Date.now()}-${index}`,
-            tipo_lote: tipoParaFilas,
-            tipo_documento: fila.tipo_documento || tipoDocumentoBase,
-            tipo_movimiento: fila.tipo_movimiento || movimientoBase,
-            fecha_documento: limpiarDatoIa(fila.fecha_documento || fila.fecha),
-            folio: limpiarDatoIa(fila.folio || fila.numero_folio),
-            numero_recibo: limpiarDatoIa(fila.numero_recibo),
-            persona: limpiarDatoIa(fila.responsable || fila.persona),
-            concepto: limpiarDatoIa(fila.concepto || fila.detalle),
-            rubro: limpiarDatoIa(rubroDesdeLote(tipoParaFilas, fila)),
-            subrubro: limpiarDatoIa(fila.subrubro),
-            responsable: limpiarDatoIa(fila.responsable),
-            destino: limpiarDatoIa(fila.destino),
-            tarea: limpiarDatoIa(fila.tarea),
-            monto_ingreso:
-              fila.monto_ingreso ?? (movimientoBase === "ingreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
-            monto_egreso:
-              fila.monto_egreso ?? (movimientoBase === "egreso" ? fila.monto_bs ?? fila.monto_total ?? "" : ""),
-            monto_rendido: fila.monto_rendido ?? "",
-            saldo_libro: fila.saldo_libro ?? "",
-            cantidad: fila.cantidad ?? "",
-            unidad: limpiarDatoIa(fila.unidad),
-            item: limpiarDatoIa(fila.item),
-            contraparte: limpiarDatoIa(fila.contraparte || fila.comprador || fila.acreedor || fila.deudor),
-            precio_unitario: fila.precio_unitario ?? "",
-            precio_referencia: fila.precio_referencia ?? "",
-            ley_oro: limpiarDatoIa(fila.ley_oro),
-            interes_porcentaje: fila.interes_porcentaje ?? "",
-            saldo_a_favor: fila.saldo_a_favor ?? "",
-            saldo_en_contra: fila.saldo_en_contra ?? "",
-            observaciones: [
-              fila.observaciones,
-              Array.isArray(fila.valores_sin_ubicar) && fila.valores_sin_ubicar.length
-                ? `Valores sin ubicar: ${fila.valores_sin_ubicar.join(", ")}`
-                : "",
-              fila.dudas,
-              resultado.tipo_lote_detectado ? `Tipo lote IA: ${etiquetaLote(tipoParaFilas)}` : "",
-              fila.confianza && typeof fila.confianza === "string" ? `Confianza IA: ${fila.confianza}` : "",
-              Array.isArray(fila.campos_dudosos) && fila.campos_dudosos.length
-                ? `Campos dudosos: ${fila.campos_dudosos.join(", ")}`
-                : "",
-            ]
-              .filter(Boolean)
-              .join(" | "),
-            confianza: confianzaIaANumero(fila.confianza, fila.confianza_numerica) ?? "",
-          };
-        })
-      );
-      setGuardarDuplicadosTabla(false);
+  const analizarTablaManuscrita = async () => {
+    if (!fotosTabla.length) {
+      setMensaje({ texto: "Selecciona una o varias fotos del cuaderno manuscrito.", tipo: "advertencia" });
+      return;
+    }
+    if (!estructuraTabla?.columnas_detectadas?.length) {
+      setMensaje({ texto: "Primero analiza y confirma las columnas de la tabla.", tipo: "advertencia" });
+      return;
+    }
+
+    setAnalizandoTabla(true);
+    setMensaje({ texto: "La IA esta extrayendo filas con las columnas confirmadas...", tipo: "info" });
+
+    try {
+      const imagenes = (await Promise.all(fotosTabla.map((file) => prepararImagenesTabla(file)))).flat();
+
+      const res = await fetch("/api/comision-revisora/analizar-tabla", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imagenes,
+          tipoFuente: tipoFuenteTabla,
+          orientacion: orientacionTabla,
+          modo: "filas",
+          estructura: estructuraTabla,
+        }),
+      });
+      const resultado = await res.json();
+      if (resultado.error) throw new Error(resultado.error);
+
+      aplicarResultadoTabla(resultado, estructuraTabla);
 
       setMensaje({
-        texto: `Filas extraidas. Tipo detectado: ${etiquetaLote(tipoParaFilas)}. Revisa antes de guardar.`,
+        texto: `Filas extraidas con estructura confirmada. Revisa antes de guardar.`,
         tipo: "exito",
       });
     } catch (error) {
@@ -1709,6 +1828,42 @@ export default function ComisionRevisoraPage() {
     setFilasExtraidas((actual) =>
       actual.map((fila) => (fila.id_temporal === idTemporal ? { ...fila, [campo]: valor } : fila))
     );
+  };
+
+  const actualizarEstructuraColumna = (index, campo, valor) => {
+    setEstructuraTabla((actual) => {
+      if (!actual) return actual;
+      return {
+        ...actual,
+        columnas_detectadas: actual.columnas_detectadas.map((columna, i) =>
+          i === index ? { ...columna, [campo]: valor } : columna
+        ),
+      };
+    });
+    setFilasExtraidas([]);
+  };
+
+  const agregarColumnaEstructura = () => {
+    setEstructuraTabla((actual) => {
+      const base = actual || normalizarEstructuraTabla({}, tipoFuenteTabla);
+      const numeroColumna = (base.columnas_detectadas?.length || 0) + 1;
+      return {
+        ...base,
+        columnas_detectadas: [
+          ...(base.columnas_detectadas || []),
+          {
+            key: `columna_${numeroColumna}`,
+            label: `Columna ${numeroColumna}`,
+            original: `Columna ${numeroColumna}`,
+            tipo_dato: "texto",
+            obligatoria: false,
+            descartada: false,
+            motivo: "Agregada por usuario",
+          },
+        ],
+      };
+    });
+    setFilasExtraidas([]);
   };
 
   const guardarFilasExtraidas = async () => {
@@ -2166,6 +2321,7 @@ export default function ComisionRevisoraPage() {
                   value={tipoFuenteTabla}
                   onChange={(e) => {
                     setTipoFuenteTabla(e.target.value);
+                    setEstructuraTabla(null);
                     setLoteTablaDetectado(null);
                     setFilasExtraidas([]);
                   }}
@@ -2181,6 +2337,7 @@ export default function ComisionRevisoraPage() {
                   value={orientacionTabla}
                   onChange={(e) => {
                     setOrientacionTabla(e.target.value);
+                    setEstructuraTabla(null);
                     setLoteTablaDetectado(null);
                     setFilasExtraidas([]);
                   }}
@@ -2198,6 +2355,7 @@ export default function ComisionRevisoraPage() {
                   multiple
                   onChange={(e) => {
                     setFotosTabla(Array.from(e.target.files || []));
+                    setEstructuraTabla(null);
                     setLoteTablaDetectado(null);
                     setFilasExtraidas([]);
                   }}
@@ -2211,11 +2369,98 @@ export default function ComisionRevisoraPage() {
                 ) : null}
                 <button
                   type="button"
+                  onClick={analizarEstructuraTabla}
+                  disabled={analizandoEstructura}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {analizandoEstructura ? "Analizando columnas..." : "1. Analizar tipo y columnas"}
+                </button>
+                {estructuraTabla ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-emerald-950">Estructura detectada</p>
+                        <p className="text-xs font-semibold text-emerald-800">
+                          Corrige el tipo o columnas antes de extraer. Si una columna no sirve, marcala como descartar.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={agregarColumnaEstructura}
+                        className="rounded-lg border border-emerald-300 bg-white px-3 py-1 text-xs font-bold text-emerald-800"
+                      >
+                        Agregar columna
+                      </button>
+                    </div>
+                    <select
+                      value={estructuraTabla.tipo_lote_detectado}
+                      onChange={(e) => {
+                        setEstructuraTabla((actual) =>
+                          actual ? { ...actual, tipo_lote_detectado: e.target.value } : actual
+                        );
+                        setFilasExtraidas([]);
+                      }}
+                      className="mt-3 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm"
+                    >
+                      {TIPOS_LOTE_TABLA.filter((tipo) => tipo.value !== "auto").map((tipo) => (
+                        <option key={tipo.value} value={tipo.value}>
+                          {tipo.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-3 space-y-2">
+                      {estructuraTabla.columnas_detectadas.map((columna, index) => (
+                        <div key={`${columna.key}-${index}`} className="rounded-lg border border-emerald-200 bg-white p-2">
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(columna.descartada)}
+                              onChange={(e) => actualizarEstructuraColumna(index, "descartada", e.target.checked)}
+                            />
+                            Descartar esta columna
+                          </label>
+                          <div className="mt-2 grid gap-2">
+                            <input
+                              value={columna.label}
+                              onChange={(e) => actualizarEstructuraColumna(index, "label", e.target.value)}
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                              placeholder="Nombre visible"
+                            />
+                            <input
+                              value={columna.key}
+                              onChange={(e) =>
+                                actualizarEstructuraColumna(index, "key", normalizarClaveColumna(e.target.value) || e.target.value)
+                              }
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                              placeholder="Key tecnica"
+                            />
+                            <select
+                              value={columna.tipo_dato}
+                              onChange={(e) => actualizarEstructuraColumna(index, "tipo_dato", e.target.value)}
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                            >
+                              {TIPOS_DATO_COLUMNA.map((tipoDato) => (
+                                <option key={tipoDato.value} value={tipoDato.value}>
+                                  {tipoDato.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Original: {columna.original || columna.label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
                   onClick={analizarTablaManuscrita}
-                  disabled={analizandoTabla}
+                  disabled={analizandoTabla || !estructuraTabla}
                   className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
                 >
-                  {analizandoTabla ? "Extrayendo..." : "Extraer filas con IA"}
+                  {analizandoTabla ? "Extrayendo..." : "2. Extraer filas con columnas confirmadas"}
                 </button>
               </div>
             </section>

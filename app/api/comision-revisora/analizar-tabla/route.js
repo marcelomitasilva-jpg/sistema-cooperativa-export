@@ -7,22 +7,36 @@ import {
 
 export async function POST(request) {
   try {
-    const { imagenes, tipoFuente, orientacion } = await request.json();
+    const { imagenes, tipoFuente, orientacion, modo = "completo", estructura: estructuraConfirmada } = await request.json();
     const tipoLote = tipoFuente || "auto";
 
     if (!Array.isArray(imagenes) || imagenes.length === 0) {
       return NextResponse.json({ error: "Faltan imagenes" }, { status: 400 });
     }
 
-    const promptEstructura = crearPromptAnalisisEstructuraTabla({
-      tipoFuente: tipoLote,
-      orientacion: orientacion || "normal",
-    });
+    let estructura = estructuraConfirmada;
 
-    const estructura = await analizarImagenes({
-      prompt: promptEstructura,
-      imagenes,
-    });
+    if (!estructura) {
+      const promptEstructura = crearPromptAnalisisEstructuraTabla({
+        tipoFuente: tipoLote,
+        orientacion: orientacion || "normal",
+      });
+
+      estructura = await analizarImagenes({
+        prompt: promptEstructura,
+        imagenes,
+      });
+    }
+
+    if (modo === "estructura") {
+      return NextResponse.json({
+        ...estructura,
+        tipo_lote_solicitado: tipoLote,
+        tipo_lote_detectado: estructura.tipo_lote_detectado || tipoLote,
+        confianza_tipo_lote: estructura.confianza_tipo_lote || "media",
+        columnas_detectadas: Array.isArray(estructura.columnas_detectadas) ? estructura.columnas_detectadas : [],
+      });
+    }
 
     const promptExtraccion = crearPromptExtraccionConEstructura({
       tipoFuente: tipoLote,
