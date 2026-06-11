@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { analizarImagenes } from "@/lib/vision-ai";
-import { crearPromptExtraccionCuadernoEgresos } from "@/lib/comision-prompts";
+import {
+  crearPromptAnalisisEstructuraTabla,
+  crearPromptExtraccionConEstructura,
+} from "@/lib/comision-prompts";
 
 export async function POST(request) {
   try {
@@ -11,29 +14,40 @@ export async function POST(request) {
       return NextResponse.json({ error: "Faltan imagenes" }, { status: 400 });
     }
 
-    const promptBase = crearPromptExtraccionCuadernoEgresos({
+    const promptEstructura = crearPromptAnalisisEstructuraTabla({
       tipoFuente: tipoLote,
+      orientacion: orientacion || "normal",
     });
-    const promptText =
-      orientacion === "auto_180"
-        ? `${promptBase}
 
-IMPORTANTE SOBRE ORIENTACION DE IMAGEN:
-El sistema puede enviarte dos versiones de una misma pagina: original y girada 180 grados.
-No son dos paginas distintas. Compara ambas, elige la orientacion donde la cabecera y las columnas se lean mejor, y extrae una sola vez.
-No dupliques filas por ver la misma pagina en dos orientaciones.`
-        : promptBase;
+    const estructura = await analizarImagenes({
+      prompt: promptEstructura,
+      imagenes,
+    });
+
+    const promptExtraccion = crearPromptExtraccionConEstructura({
+      tipoFuente: tipoLote,
+      orientacion: orientacion || "normal",
+      estructura,
+    });
 
     const resultado = await analizarImagenes({
-      prompt: promptText,
+      prompt: promptExtraccion,
       imagenes,
     });
 
     return NextResponse.json({
       ...resultado,
       tipo_lote_solicitado: tipoLote,
-      tipo_lote_detectado: resultado.tipo_lote_detectado || resultado.tipo_documento || tipoLote,
-      columnas_detectadas: Array.isArray(resultado.columnas_detectadas) ? resultado.columnas_detectadas : [],
+      tipo_lote_detectado:
+        resultado.tipo_lote_detectado || estructura.tipo_lote_detectado || resultado.tipo_documento || tipoLote,
+      confianza_tipo_lote: resultado.confianza_tipo_lote || estructura.confianza_tipo_lote || "media",
+      analisis_tabla: resultado.analisis_tabla || estructura.analisis_tabla || null,
+      columnas_detectadas: Array.isArray(resultado.columnas_detectadas)
+        ? resultado.columnas_detectadas
+        : Array.isArray(estructura.columnas_detectadas)
+          ? estructura.columnas_detectadas
+          : [],
+      estructura_tabla: estructura,
     });
   } catch (error) {
     console.error("Error analizando tabla manuscrita:", error);
